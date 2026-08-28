@@ -24,7 +24,7 @@ constexpr std::array<const char *, 10> ALGORITHMS = {"NEH",  "PF",     "PF_NEH",
                                                       "LPT",  "MinMax", "mNEH",   "PW",  "GRASP_NEH"};
 
 void print_solution(const std::string &algorithm, const Solution &s, double elapsed_ms, bool verbose) {
-    std::cout << algorithm << ',' << s.cost << ',' << elapsed_ms << '\n';
+    std::cout << s.cost << ',' << elapsed_ms << '\n';
 
     if (verbose) {
         std::cout << "sequence: [";
@@ -39,7 +39,7 @@ size_t default_lambda(const Parameters &params, const Instance &instance) {
     if (auto l = params.lambda()) {
         return *l;
     }
-    return instance.num_jobs() > 200 ? 20 : instance.num_jobs();
+    return instance.num_jobs() > 200 ? 200 : instance.num_jobs();
 }
 
 // Returns false when the algorithm name is not recognized.

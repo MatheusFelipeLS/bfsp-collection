@@ -89,6 +89,8 @@ Solution IG_VND1::solve() {
 
     PFT_NEH pft_neh(m_instance);
     Solution current = pft_neh.solve(lambda);
+    std::cout << current << std::endl;
+    getchar();  
     Solution best = current;
     Solution incumbent = current;
     std::vector<size_t> reference = current.sequence;
