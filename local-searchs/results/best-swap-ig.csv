@@ -1,0 +1,16 @@
+instance,initial_cost,final_cost,improvement_abs,improvement_pct,time_ms,note
+J20M5N1,1828,1828,0,0,0.0217232,comparison bug reproduced faithfully: always a no-op, see README
+J20M10N1,2140,2140,0,0,0.0695104,comparison bug reproduced faithfully: always a no-op, see README
+J20M20N1,2974,2974,0,0,0.0703376,comparison bug reproduced faithfully: always a no-op, see README
+J50M5N1,3975,3975,0,0,0.304401,comparison bug reproduced faithfully: always a no-op, see README
+J50M10N1,4711,4711,0,0,0.539153,comparison bug reproduced faithfully: always a no-op, see README
+J50M20N1,5504,5504,0,0,1.30661,comparison bug reproduced faithfully: always a no-op, see README
+J100M5N1,8059,8059,0,0,2.30157,comparison bug reproduced faithfully: always a no-op, see README
+J100M10N1,8854,8854,0,0,4.0413,comparison bug reproduced faithfully: always a no-op, see README
+J100M20N1,9596,9596,0,0,15.6859,comparison bug reproduced faithfully: always a no-op, see README
+J200M5N1,15790,15790,0,0,19.0188,comparison bug reproduced faithfully: always a no-op, see README
+J200M10N1,16855,16855,0,0,40.6213,comparison bug reproduced faithfully: always a no-op, see README
+J200M20N1,17521,17521,0,0,136.646,comparison bug reproduced faithfully: always a no-op, see README
+J500M5N1,38991,38991,0,0,514.035,comparison bug reproduced faithfully: always a no-op, see README
+J500M10N1,41294,41294,0,0,720.985,comparison bug reproduced faithfully: always a no-op, see README
+J500M20N1,43146,43146,0,0,1125.02,comparison bug reproduced faithfully: always a no-op, see README

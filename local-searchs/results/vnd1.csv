@@ -1,0 +1,16 @@
+instance,initial_cost,final_cost,improvement_abs,improvement_pct,time_ms,note
+J20M5N1,1828,1447,381,20.8425,0.077284,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J20M10N1,2140,1746,394,18.4112,0.208696,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J20M20N1,2974,2511,463,15.5683,0.214626,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J50M5N1,3975,3221,754,18.9686,0.80947,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J50M10N1,4711,3818,893,18.9556,1.57083,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J50M20N1,5504,4836,668,12.1366,1.68425,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J100M5N1,8059,6551,1508,18.712,6.85442,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J100M10N1,8854,7504,1350,15.2473,6.03138,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J100M20N1,9596,8270,1326,13.8183,23.4633,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J200M5N1,15790,12617,3173,20.095,28.8261,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J200M10N1,16855,14168,2687,15.9419,64.8115,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J200M20N1,17521,15407,2114,12.0655,129.155,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J500M5N1,38991,30613,8378,21.487,594.066,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J500M10N1,41294,34709,6585,15.9466,884.12,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
+J500M20N1,43146,37851,5295,12.2723,1424.35,k=2 (best-swap-ig) never contributes: see best-swap-ig's bug
