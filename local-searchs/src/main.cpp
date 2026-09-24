@@ -16,8 +16,9 @@
 //   ./local-searchs <instance> -p rls-grabowski   # just one
 //   ./local-searchs <instance> -n 20 -s 1         # 20 reps, RNG seed 1
 //
-// Prints a CSV header on stderr and one CSV row per local search on stdout:
-//   localsearch,n,m,iters,initial_cost,final_cost,improvement_abs,improvement_pct,time_ms,note
+// Prints a CSV header on stderr and, on stdout, one CSV row PER REPETITION
+// of each local search (`iters` rows per entry, not pre-averaged):
+//   localsearch,n,m,iteration,iters,initial_cost,final_cost,improvement_abs,improvement_pct,time_ms,note
 //
 // Every entry starts from the SAME random initial solution (shuffled with the
 // given seed), so improvement/time are directly comparable across entries.

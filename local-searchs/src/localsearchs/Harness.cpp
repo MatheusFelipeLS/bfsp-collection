@@ -34,23 +34,6 @@ std::vector<size_t> random_perm(size_t n) {
     return v;
 }
 
-// Re-runs `setup()` (reseeds RNG + resets working state to the shared
-// `initial` solution) before every one of `iters` repetitions, so every
-// repetition of every entry starts from the identical state - required
-// because, unlike speed-ups/Bench.cpp (which times a pure function), each
-// local search here mutates its working Solution cumulatively.
-double time_reset_ms(const std::function<void()> &setup, const std::function<void()> &fn, size_t iters) {
-    double total = 0.0;
-    for (size_t it = 0; it < iters; it++) {
-        setup();
-        const auto start = std::chrono::steady_clock::now();
-        fn();
-        const auto end = std::chrono::steady_clock::now();
-        total += std::chrono::duration<double, std::milli>(end - start).count();
-    }
-    return total / (double)iters;
-}
-
 ls::Result blank(const char *name, Instance &instance, const Parameters &params, size_t initial_cost) {
     ls::Result r;
     r.name = name;
@@ -67,253 +50,288 @@ void finish(ls::Result &r, size_t final_cost) {
     r.improvement_pct = r.initial_cost > 0 ? (r.improvement_abs / (double)r.initial_cost * 100.0) : 0.0;
 }
 
+// Re-runs `setup()` (reseeds RNG + resets working state to the shared
+// `initial` solution) before every one of `iters` repetitions, so every
+// repetition of every entry starts from the identical state - required
+// because, unlike speed-ups/Bench.cpp (which times a pure function), each
+// local search here mutates its working Solution cumulatively.
+//
+// Unlike the old single-Result-per-entry design, this returns one Result
+// PER repetition (its own time_ms, final_cost, note), so no aggregation is
+// lost - downstream (Python) is responsible for averaging across
+// `iteration` when it wants a summary. `make_result` runs right after
+// `fn()`, with the repetition's `time_ms` already set, and is expected to
+// call `finish()` (and optionally set `r.note`) using whatever state `fn`
+// left behind.
+template <typename SetupFn, typename RunFn, typename MakeResultFn>
+std::vector<ls::Result> run_iterations(const char *name, Instance &instance, const Parameters &params,
+                                        size_t initial_cost, SetupFn setup, RunFn fn, MakeResultFn make_result,
+                                        size_t iters) {
+    std::vector<ls::Result> out;
+    out.reserve(iters);
+    for (size_t it = 0; it < iters; it++) {
+        setup();
+        const auto start = std::chrono::steady_clock::now();
+        fn();
+        const auto end = std::chrono::steady_clock::now();
+        ls::Result r = blank(name, instance, params, initial_cost);
+        r.iteration = it + 1;
+        r.time_ms = std::chrono::duration<double, std::milli>(end - start).count();
+        make_result(r);
+        out.push_back(std::move(r));
+    }
+    return out;
+}
+
 // ---------------------------------------------------------------------------
 // #1/#2 - canonical RLS (partial-recalc cluster: MA/DIWO/MFFO/SaDIWO/HDDE/speed-ups)
 // ---------------------------------------------------------------------------
-ls::Result bench_rls(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("rls", instance, params, initial.cost);
+std::vector<ls::Result> bench_rls(Instance &instance, const Solution &initial, const Parameters &params,
+                                  size_t seed) {
     Solution s;
     std::vector<size_t> ref;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "rls", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             ref = random_perm(instance.num_jobs());
         },
-        [&] { rls(s, ref, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { rls(s, ref, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
-ls::Result bench_rls_grabowski(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("rls-grabowski", instance, params, initial.cost);
+std::vector<ls::Result> bench_rls_grabowski(Instance &instance, const Solution &initial, const Parameters &params,
+                                            size_t seed) {
     Solution s;
     std::vector<size_t> ref;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "rls-grabowski", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             ref = random_perm(instance.num_jobs());
         },
-        [&] { rls_grabowski(s, ref, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { rls_grabowski(s, ref, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #3 - DE_ABC's single-pass rls (own signature, no ref parameter)
 // ---------------------------------------------------------------------------
-ls::Result bench_rls_de_abc(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("rls-de-abc", instance, params, initial.cost);
+std::vector<ls::Result> bench_rls_de_abc(Instance &instance, const Solution &initial, const Parameters &params,
+                                         size_t seed) {
     Solution s;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "rls-de-abc", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
         },
-        [&] { rls_de_abc(s, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { rls_de_abc(s, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #4 - P_EDA's mrls (periodic RNG reshuffle of the reference on wrap)
 // ---------------------------------------------------------------------------
-ls::Result bench_mrls_p_eda(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("mrls-p-eda", instance, params, initial.cost);
+std::vector<ls::Result> bench_mrls_p_eda(Instance &instance, const Solution &initial, const Parameters &params,
+                                         size_t seed) {
     Solution s;
     std::vector<size_t> ref;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "mrls-p-eda", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             ref = random_perm(instance.num_jobs());
         },
-        [&] { mrls_p_eda(s, ref, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { mrls_p_eda(s, ref, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #5/#6 - BestSwap (IG_IJ/IG_VND1/IG_VND2): faithful bug + fixed comparison
 // ---------------------------------------------------------------------------
-ls::Result bench_best_swap_ig(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("best-swap-ig", instance, params, initial.cost);
+std::vector<ls::Result> bench_best_swap_ig(Instance &instance, const Solution &initial, const Parameters &params,
+                                           size_t seed) {
     Solution s;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "best-swap-ig", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
         },
-        [&] { best_swap_ig(s, instance); }, params.iters());
-    finish(r, s.cost);
-    r.note = "comparison bug reproduced faithfully: always a no-op, see README";
-    return r;
+        [&] { best_swap_ig(s, instance); },
+        [&](ls::Result &r) {
+            finish(r, s.cost);
+            r.note = "comparison bug reproduced faithfully: always a no-op, see README";
+        },
+        params.iters());
 }
 
-ls::Result bench_best_swap_ig_fixed(Instance &instance, const Solution &initial, const Parameters &params,
-                                    size_t seed) {
-    ls::Result r = blank("best-swap-ig-fixed", instance, params, initial.cost);
+std::vector<ls::Result> bench_best_swap_ig_fixed(Instance &instance, const Solution &initial,
+                                                 const Parameters &params, size_t seed) {
     Solution s;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "best-swap-ig-fixed", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
         },
-        [&] { best_swap_ig_fixed(s, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { best_swap_ig_fixed(s, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #7 - IG::local_search (first-improvement swap-only)
 // ---------------------------------------------------------------------------
-ls::Result bench_swap_first_ig(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("swap-first-ig", instance, params, initial.cost);
+std::vector<ls::Result> bench_swap_first_ig(Instance &instance, const Solution &initial, const Parameters &params,
+                                            size_t seed) {
     Solution s;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "swap-first-ig", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
         },
-        [&] { swap_local_search_first(s, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { swap_local_search_first(s, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #8/#9 - VND drivers (IG_VND1, IG_VND2)
 // ---------------------------------------------------------------------------
-ls::Result bench_vnd1(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("vnd1", instance, params, initial.cost);
+std::vector<ls::Result> bench_vnd1(Instance &instance, const Solution &initial, const Parameters &params,
+                                   size_t seed) {
     Solution s;
     std::vector<size_t> reference;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "vnd1", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             reference = initial.sequence;
         },
-        [&] { vnd1(s, reference, instance); }, params.iters());
-    finish(r, s.cost);
-    r.note = "k=2 (best-swap-ig) never contributes: see best-swap-ig's bug";
-    return r;
+        [&] { vnd1(s, reference, instance); },
+        [&](ls::Result &r) {
+            finish(r, s.cost);
+            r.note = "k=2 (best-swap-ig) never contributes: see best-swap-ig's bug";
+        },
+        params.iters());
 }
 
-ls::Result bench_vnd2(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("vnd2", instance, params, initial.cost);
+std::vector<ls::Result> bench_vnd2(Instance &instance, const Solution &initial, const Parameters &params,
+                                   size_t seed) {
     Solution s;
     std::vector<size_t> reference;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "vnd2", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             reference = initial.sequence;
         },
-        [&] { vnd2(s, reference, instance); }, params.iters());
-    finish(r, s.cost);
-    r.note = "k=1 (best-swap-ig) is dead: see best-swap-ig's bug";
-    return r;
+        [&] { vnd2(s, reference, instance); },
+        [&](ls::Result &r) {
+            finish(r, s.cost);
+            r.note = "k=1 (best-swap-ig) is dead: see best-swap-ig's bug";
+        },
+        params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #10/#11 - vnd1/vnd2 with the BestSwap comparison bug fixed (not in the repo)
 // ---------------------------------------------------------------------------
-ls::Result bench_vnd1_fixed(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("vnd1-fixed", instance, params, initial.cost);
+std::vector<ls::Result> bench_vnd1_fixed(Instance &instance, const Solution &initial, const Parameters &params,
+                                         size_t seed) {
     Solution s;
     std::vector<size_t> reference;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "vnd1-fixed", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             reference = initial.sequence;
         },
-        [&] { vnd1_fixed(s, reference, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { vnd1_fixed(s, reference, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
-ls::Result bench_vnd2_fixed(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("vnd2-fixed", instance, params, initial.cost);
+std::vector<ls::Result> bench_vnd2_fixed(Instance &instance, const Solution &initial, const Parameters &params,
+                                         size_t seed) {
     Solution s;
     std::vector<size_t> reference;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "vnd2-fixed", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             reference = initial.sequence;
         },
-        [&] { vnd2_fixed(s, reference, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { vnd2_fixed(s, reference, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #12 - IG_IJ's probabilistic dispatch (not a VND)
 // ---------------------------------------------------------------------------
-ls::Result bench_ig_ij_dispatch(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("ig-ij-dispatch", instance, params, initial.cost);
+std::vector<ls::Result> bench_ig_ij_dispatch(Instance &instance, const Solution &initial, const Parameters &params,
+                                             size_t seed) {
     Solution s;
     std::vector<size_t> reference;
     bool took_best_swap = false;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "ig-ij-dispatch", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             reference = initial.sequence;
         },
-        [&] { took_best_swap = ig_ij_dispatch(s, reference, instance, params.jp()); }, params.iters());
-    finish(r, s.cost);
-    r.note = std::string("branch=") + (took_best_swap ? "best-swap-ig" : "rls") + " jp=" + std::to_string(params.jp());
-    return r;
+        [&] { took_best_swap = ig_ij_dispatch(s, reference, instance, params.jp()); },
+        [&](ls::Result &r) {
+            finish(r, s.cost);
+            r.note =
+                std::string("branch=") + (took_best_swap ? "best-swap-ig" : "rls") + " jp=" + std::to_string(params.jp());
+        },
+        params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #13/#14 - SVNS_S (single pass per call)
 // ---------------------------------------------------------------------------
-ls::Result bench_svns_s_swap(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("svns-s-swap", instance, params, initial.cost);
+std::vector<ls::Result> bench_svns_s_swap(Instance &instance, const Solution &initial, const Parameters &params,
+                                          size_t seed) {
     Solution s;
     std::vector<size_t> reference;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "svns-s-swap", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             reference = random_perm(instance.num_jobs());
         },
-        [&] { ls1_s_swap(s, reference, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { ls1_s_swap(s, reference, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
-ls::Result bench_svns_s_insertion(Instance &instance, const Solution &initial, const Parameters &params,
-                                  size_t seed) {
-    ls::Result r = blank("svns-s-insertion", instance, params, initial.cost);
+std::vector<ls::Result> bench_svns_s_insertion(Instance &instance, const Solution &initial, const Parameters &params,
+                                               size_t seed) {
     Solution s;
     std::vector<size_t> reference;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "svns-s-insertion", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
             reference = random_perm(instance.num_jobs());
         },
-        [&] { ls2_s_insertion(s, reference, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { ls2_s_insertion(s, reference, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #15/#16 - SVNS_D (iterated to convergence/time-limit - the driver from solve())
 // ---------------------------------------------------------------------------
-ls::Result bench_svns_d_swap(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("svns-d-swap", instance, params, initial.cost);
+std::vector<ls::Result> bench_svns_d_swap(Instance &instance, const Solution &initial, const Parameters &params,
+                                          size_t seed) {
     const double time_limit_ms =
         params.svns_time_limit_ms().value_or((double)(instance.num_jobs() * instance.num_machines()));
     Solution s;
     std::vector<size_t> reference;
     size_t passes = 0;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "svns-d-swap", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
@@ -332,21 +350,22 @@ ls::Result bench_svns_d_swap(Instance &instance, const Solution &initial, const 
                 }
             }
         },
+        [&](ls::Result &r) {
+            finish(r, s.cost);
+            r.note = "passes=" + std::to_string(passes) + " time_limit_ms=" + std::to_string(time_limit_ms);
+        },
         params.iters());
-    finish(r, s.cost);
-    r.note = "passes=" + std::to_string(passes) + " time_limit_ms=" + std::to_string(time_limit_ms);
-    return r;
 }
 
-ls::Result bench_svns_d_insertion(Instance &instance, const Solution &initial, const Parameters &params,
-                                  size_t seed) {
-    ls::Result r = blank("svns-d-insertion", instance, params, initial.cost);
+std::vector<ls::Result> bench_svns_d_insertion(Instance &instance, const Solution &initial, const Parameters &params,
+                                               size_t seed) {
     const double time_limit_ms =
         params.svns_time_limit_ms().value_or((double)(instance.num_jobs() * instance.num_machines()));
     Solution s;
     std::vector<size_t> reference;
     size_t passes = 0;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "svns-d-insertion", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
@@ -365,104 +384,103 @@ ls::Result bench_svns_d_insertion(Instance &instance, const Solution &initial, c
                 }
             }
         },
+        [&](ls::Result &r) {
+            finish(r, s.cost);
+            r.note = "passes=" + std::to_string(passes) + " time_limit_ms=" + std::to_string(time_limit_ms);
+        },
         params.iters());
-    finish(r, s.cost);
-    r.note = "passes=" + std::to_string(passes) + " time_limit_ms=" + std::to_string(time_limit_ms);
-    return r;
 }
 
 // ---------------------------------------------------------------------------
 // #17/#18/#19 - HVNS's three deterministic neighbourhoods (reused from speed-ups)
 // ---------------------------------------------------------------------------
-ls::Result bench_hvns_best_insertion(Instance &instance, const Solution &initial, const Parameters &params,
-                                     size_t seed) {
-    ls::Result r = blank("hvns-best-insertion", instance, params, initial.cost);
+std::vector<ls::Result> bench_hvns_best_insertion(Instance &instance, const Solution &initial,
+                                                   const Parameters &params, size_t seed) {
     EdgeInsertion ei(instance);
     Solution s;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "hvns-best-insertion", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
         },
-        [&] { ei.single_insertion_local_search(s); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { ei.single_insertion_local_search(s); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
-ls::Result bench_hvns_best_edge_insertion(Instance &instance, const Solution &initial, const Parameters &params,
-                                          size_t seed) {
-    ls::Result r = blank("hvns-best-edge-insertion", instance, params, initial.cost);
+std::vector<ls::Result> bench_hvns_best_edge_insertion(Instance &instance, const Solution &initial,
+                                                        const Parameters &params, size_t seed) {
     EdgeInsertion ei(instance);
     Solution s;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "hvns-best-edge-insertion", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
         },
-        [&] { ei.edge_insertion_local_search(s); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { ei.edge_insertion_local_search(s); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
-ls::Result bench_hvns_best_swap(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("hvns-best-swap", instance, params, initial.cost);
+std::vector<ls::Result> bench_hvns_best_swap(Instance &instance, const Solution &initial, const Parameters &params,
+                                             size_t seed) {
     Solution s;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "hvns-best-swap", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
         },
-        [&] { swap_local_search_best(s, instance); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { swap_local_search_best(s, instance); }, [&](ls::Result &r) { finish(r, s.cost); }, params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #20 - HVNS's VNS restart cycle (k=1..3), without the interleaved SA phase
 // ---------------------------------------------------------------------------
-ls::Result bench_hvns_shaking(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("hvns-shaking", instance, params, initial.cost);
+std::vector<ls::Result> bench_hvns_shaking(Instance &instance, const Solution &initial, const Parameters &params,
+                                           size_t seed) {
     Solution s;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "hvns-shaking", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             s = initial;
         },
-        [&] { hvns_shaking(s, instance, params.hvns_time_limit_ms()); }, params.iters());
-    finish(r, s.cost);
-    return r;
+        [&] { hvns_shaking(s, instance, params.hvns_time_limit_ms()); }, [&](ls::Result &r) { finish(r, s.cost); },
+        params.iters());
 }
 
 // ---------------------------------------------------------------------------
 // #21/#22 - HVNS's SA-flavoured local searches
 // ---------------------------------------------------------------------------
-ls::Result bench_hvns_sa_rls(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("hvns-sa-rls", instance, params, initial.cost);
+std::vector<ls::Result> bench_hvns_sa_rls(Instance &instance, const Solution &initial, const Parameters &params,
+                                          size_t seed) {
     const HvnsSaParams sa = hvns_compute_sa_params(instance, params.hvns_n_iter());
     Solution current;
     Solution best;
     double T = 0.0;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "hvns-sa-rls", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             current = initial;
             best = initial;
             T = sa.t_init;
         },
-        [&] { hvns_sa_rls(current, best, instance, T, sa.beta, params.hvns_time_limit_ms()); }, params.iters());
-    finish(r, best.cost);
-    r.note = "final_T=" + std::to_string(T) + " current_cost=" + std::to_string(current.cost);
-    return r;
+        [&] { hvns_sa_rls(current, best, instance, T, sa.beta, params.hvns_time_limit_ms()); },
+        [&](ls::Result &r) {
+            finish(r, best.cost);
+            r.note = "final_T=" + std::to_string(T) + " current_cost=" + std::to_string(current.cost);
+        },
+        params.iters());
 }
 
-ls::Result bench_hvns_sa_edge_insertion(Instance &instance, const Solution &initial, const Parameters &params,
-                                        size_t seed) {
-    ls::Result r = blank("hvns-sa-edge-insertion", instance, params, initial.cost);
+std::vector<ls::Result> bench_hvns_sa_edge_insertion(Instance &instance, const Solution &initial,
+                                                      const Parameters &params, size_t seed) {
     const HvnsSaParams sa = hvns_compute_sa_params(instance, params.hvns_n_iter());
     Solution current;
     Solution best;
     double T = 0.0;
-    r.time_ms = time_reset_ms(
+    return run_iterations(
+        "hvns-sa-edge-insertion", instance, params, initial.cost,
         [&] {
             RNG::instance().set_seed(seed);
             current = initial;
@@ -470,32 +488,35 @@ ls::Result bench_hvns_sa_edge_insertion(Instance &instance, const Solution &init
             T = sa.t_init;
         },
         [&] { hvns_sa_best_edge_insertion(current, best, instance, T, sa.beta, params.hvns_time_limit_ms()); },
+        [&](ls::Result &r) {
+            finish(r, best.cost);
+            r.note = "final_T=" + std::to_string(T) + " current_cost=" + std::to_string(current.cost);
+        },
         params.iters());
-    finish(r, best.cost);
-    r.note = "final_T=" + std::to_string(T) + " current_cost=" + std::to_string(current.cost);
-    return r;
 }
 
 // ---------------------------------------------------------------------------
 // #23 - TPA's SimulatedAnnealing::anneal
 // ---------------------------------------------------------------------------
-ls::Result bench_tpa_sa(Instance &instance, const Solution &initial, const Parameters &params, size_t seed) {
-    ls::Result r = blank("tpa-sa", instance, params, initial.cost);
+std::vector<ls::Result> bench_tpa_sa(Instance &instance, const Solution &initial, const Parameters &params,
+                                     size_t seed) {
     TpaSaResult sa_result;
-    r.time_ms = time_reset_ms(
-        [&] { RNG::instance().set_seed(seed); },
+    return run_iterations(
+        "tpa-sa", instance, params, initial.cost, [&] { RNG::instance().set_seed(seed); },
         [&] {
             sa_result = tpa_anneal_sa(initial, instance, params.tpa_n_iter(), params.tpa_final_temp(),
                                       params.tpa_time_limit_ms());
         },
+        [&](ls::Result &r) {
+            finish(r, sa_result.best.cost);
+            r.note = "iters=" + std::to_string(sa_result.iterations) +
+                     " final_T=" + std::to_string(sa_result.final_temp) +
+                     " current_cost=" + std::to_string(sa_result.final_current.cost);
+        },
         params.iters());
-    finish(r, sa_result.best.cost);
-    r.note = "iters=" + std::to_string(sa_result.iterations) + " final_T=" + std::to_string(sa_result.final_temp) +
-             " current_cost=" + std::to_string(sa_result.final_current.cost);
-    return r;
 }
 
-using LsFn = std::function<ls::Result(Instance &, const Solution &, const Parameters &, size_t)>;
+using LsFn = std::function<std::vector<ls::Result>(Instance &, const Solution &, const Parameters &, size_t)>;
 
 const std::vector<std::pair<std::string, LsFn>> &registry() {
     static const std::vector<std::pair<std::string, LsFn>> reg = {
@@ -535,18 +556,19 @@ std::vector<ls::Result> ls::run(const std::optional<std::string> &which, Instanc
         if (which && *which != name) {
             continue;
         }
-        out.push_back(fn(instance, initial, params, seed));
+        auto results = fn(instance, initial, params, seed);
+        out.insert(out.end(), std::make_move_iterator(results.begin()), std::make_move_iterator(results.end()));
     }
     return out;
 }
 
 std::string ls::header() {
-    return "localsearch,n,m,iters,initial_cost,final_cost,improvement_abs,improvement_pct,time_ms,note";
+    return "localsearch,n,m,iteration,iters,initial_cost,final_cost,improvement_abs,improvement_pct,time_ms,note";
 }
 
 std::string ls::format(const ls::Result &r) {
     std::ostringstream os;
-    os << r.name << ',' << r.n << ',' << r.m << ',' << r.iters << ',' << r.initial_cost << ',' << r.final_cost << ','
-       << r.improvement_abs << ',' << r.improvement_pct << ',' << r.time_ms << ',' << r.note;
+    os << r.name << ',' << r.n << ',' << r.m << ',' << r.iteration << ',' << r.iters << ',' << r.initial_cost << ','
+       << r.final_cost << ',' << r.improvement_abs << ',' << r.improvement_pct << ',' << r.time_ms << ',' << r.note;
     return os.str();
 }

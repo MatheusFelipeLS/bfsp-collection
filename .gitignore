@@ -35,3 +35,6 @@
 
 # Compilation Database
 *compile_commands.json
+
+__pycache__
+.venv

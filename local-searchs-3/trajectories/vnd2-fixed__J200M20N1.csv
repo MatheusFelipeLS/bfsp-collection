@@ -1,0 +1,2 @@
+call_index,cost_before_ls,cost_after_ls,accepted,current_cost,best_cost,elapsed_ms
+1,15526,15199,0,15517,15517,3060.95

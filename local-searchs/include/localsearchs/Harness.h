@@ -15,22 +15,26 @@ struct Result {
     std::string name;
     size_t n = 0;
     size_t m = 0;
-    size_t iters = 0;
+    size_t iteration = 0; // 1-based index of this repetition, out of `iters`
+    size_t iters = 0;     // total repetitions requested (-n/--iters)
     size_t initial_cost = 0;
     size_t final_cost = 0;
     double improvement_abs = 0.0; // initial_cost - final_cost
     double improvement_pct = 0.0; // improvement_abs / initial_cost * 100
-    double time_ms = 0.0;         // averaged over `iters` repetitions
+    double time_ms = 0.0;         // wall time of THIS repetition (not averaged)
     std::string note;             // free text: iterations, final T, branch taken, ...
 };
 
 // Runs one local search (by name) or all of them when `which` is empty, all
 // starting from the same `initial` solution (a random permutation with a
 // fixed seed, generated once in main.cpp - see README.md "Solução inicial").
+// Each entry contributes `params.iters()` rows, one per repetition, so
+// results can be aggregated (averaged) downstream instead of losing the
+// per-repetition data.
 std::vector<Result> run(const std::optional<std::string> &which, Instance &instance, const Solution &initial,
                         const Parameters &params, size_t seed);
 
-// CSV: localsearch,n,m,iters,initial_cost,final_cost,improvement_abs,improvement_pct,time_ms,note
+// CSV: localsearch,n,m,iteration,iters,initial_cost,final_cost,improvement_abs,improvement_pct,time_ms,note
 std::string header();
 std::string format(const Result &r);
 

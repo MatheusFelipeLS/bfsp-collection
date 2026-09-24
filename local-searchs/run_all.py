@@ -3,10 +3,13 @@
 por entrada em results/, consumível pelo output_to_excel.py.
 
 Para cada instância executa `./build/local-searchs <instância> -n <iters> -s <seed>`,
-que emite uma linha CSV por busca local (todas partindo da MESMA solução
-inicial aleatória, gerada com a seed dada - ver README.md), e reparte essas
-linhas em results/<entrada>.csv (colunas: instance,initial_cost,final_cost,
-improvement_abs,improvement_pct,time_ms,note -- sem n/m/iters).
+que emite, por busca local, uma linha CSV POR REPETIÇÃO (todas partindo da
+MESMA solução inicial aleatória, gerada com a seed dada - ver README.md) -
+ou seja, `iters` linhas por (instância, entrada), sem nenhuma agregação.
+Essas linhas são repartidas em results/<entrada>.csv (colunas: instance,
+iteration,initial_cost,final_cost,improvement_abs,improvement_pct,time_ms,
+note -- sem n/m/iters), um arquivo por entrada com `iters` linhas por
+instância. A agregação (médias) fica por conta do output_to_excel.py.
 
 Ordem: instâncias da menor para a maior, desempate por (jobs, máquinas, número).
 """
@@ -25,11 +28,13 @@ INSTANCES_DIR = "instances"
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N(\d+)$")
 # Colunas emitidas pelo binário, na ordem do CSV.
 BINARY_COLUMNS = [
-    "localsearch", "n", "m", "iters", "initial_cost", "final_cost",
+    "localsearch", "n", "m", "iteration", "iters", "initial_cost", "final_cost",
     "improvement_abs", "improvement_pct", "time_ms", "note",
 ]
 # O que sobra por entrada depois de tirar localsearch/n/m/iters.
-SHEET_COLUMNS = ["instance", "initial_cost", "final_cost", "improvement_abs", "improvement_pct", "time_ms", "note"]
+SHEET_COLUMNS = [
+    "instance", "iteration", "initial_cost", "final_cost", "improvement_abs", "improvement_pct", "time_ms", "note",
+]
 
 # Subconjunto representativo (1 instância por grupo de tamanho). Use --all para varrer todas.
 DEFAULT_PICK = "N1"
@@ -66,8 +71,9 @@ def discover_instances(pick_all):
 
 
 def run_one(instance_path, iters, seed, extra_args):
-    """Retorna {localsearch: [instance, initial_cost, final_cost, improvement_abs,
-    improvement_pct, time_ms, note]}."""
+    """Retorna {localsearch: [[instance, iteration, initial_cost, final_cost,
+    improvement_abs, improvement_pct, time_ms, note], ...]} - uma linha por
+    repetição (iters linhas por entrada)."""
     cmd = ["./" + BINARY, instance_path, "-n", str(iters), "-s", str(seed)] + extra_args
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
@@ -80,10 +86,10 @@ def run_one(instance_path, iters, seed, extra_args):
         if len(parts) != len(BINARY_COLUMNS):
             continue
         rec = dict(zip(BINARY_COLUMNS, parts))
-        rows[rec["localsearch"]] = [
-            instance, rec["initial_cost"], rec["final_cost"], rec["improvement_abs"],
+        rows.setdefault(rec["localsearch"], []).append([
+            instance, rec["iteration"], rec["initial_cost"], rec["final_cost"], rec["improvement_abs"],
             rec["improvement_pct"], rec["time_ms"], rec["note"],
-        ]
+        ])
     return rows
 
 
@@ -120,8 +126,8 @@ def main():
     per_entry = {}
     for i, instance_path in enumerate(instances, start=1):
         log(f"[{i}/{len(instances)}] {instance_path}")
-        for entry, row in run_one(instance_path, args.iters, args.seed, extra_args).items():
-            per_entry.setdefault(entry, []).append(row)
+        for entry, rows in run_one(instance_path, args.iters, args.seed, extra_args).items():
+            per_entry.setdefault(entry, []).extend(rows)
 
     for entry, rows in per_entry.items():
         out_path = os.path.join(args.results_dir, f"{entry}.csv")
