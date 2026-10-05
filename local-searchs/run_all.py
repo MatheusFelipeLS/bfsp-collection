@@ -98,7 +98,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--no-build", action="store_true", help="não roda meson/ninja antes")
     parser.add_argument("--all", action="store_true", help="varre todas as instâncias (default: só *N1)")
-    parser.add_argument("--iters", type=int, default=5, help="repetições por busca local (default: 5)")
+    parser.add_argument("--iters", type=int, default=10, help="repetições por busca local (default: 5)")
     parser.add_argument("--seed", type=int, default=42, help="seed do RNG / solução inicial compartilhada (default: 42)")
     parser.add_argument("--results-dir", default="results", help="diretório de saída (default: results/)")
     parser.add_argument("--svns-time-limit-ms", type=float, default=None,
