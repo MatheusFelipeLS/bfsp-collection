@@ -19,6 +19,7 @@ class Parameters {
     double mneh_alpha() const { return m_mneh_alpha; }
     double beta() const { return m_beta; }
     size_t delta() const { return m_delta; }
+    size_t iter() const { return m_iter; }
 
   private:
     std::string m_instance_path;
@@ -33,6 +34,7 @@ class Parameters {
     double m_mneh_alpha = 0.8;     // mNEH default, only reference found is TPA/include/Parameters.h
     double m_beta = 5e-4;          // GRASP_NEH RCL threshold, only reference found is DE_PLS/include/Parameters.h
     size_t m_delta = 20;           // GRASP_NEH split point between the GRASP phase and the NEH phase, same source
+    size_t m_iter = 10;
 };
 
 #endif

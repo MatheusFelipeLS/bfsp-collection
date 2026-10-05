@@ -52,6 +52,12 @@ void config_argparse(argparse::ArgumentParser &cli) {
         .metavar("DELTA")
         .default_value(size_t(20))
         .scan<'i', size_t>();
+    
+    cli.add_argument("--iter")
+        .help("Iterations")
+        .metavar("ITER")
+        .default_value(size_t(10))
+        .scan<'i', size_t>();
 }
 } // namespace
 
@@ -78,4 +84,5 @@ Parameters::Parameters(int argc, char **argv) {
     m_mneh_alpha = cli.get<double>("--mneh-alpha");
     m_beta = cli.get<double>("--beta");
     m_delta = cli.get<size_t>("--delta");
+    m_iter = cli.get<size_t>("--iter");
 }

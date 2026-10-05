@@ -48,42 +48,44 @@ bool run_algorithm(const std::string &alg, Instance &instance, const Parameters 
     const auto start = std::chrono::steady_clock::now();
     Solution solution;
 
-    if (alg == "NEH") {
-        NEH neh(instance);
-        solution = neh.solve(LPT::solve(instance).sequence);
-    } else if (alg == "PF") {
-        PF pf(instance);
-        solution = pf.solve();
-    } else if (alg == "PF_NEH") {
-        PF_NEH pf_neh(instance);
-        solution = pf_neh.solve(default_lambda(params, instance));
-    } else if (alg == "PFT") {
-        PFT pft(instance);
-        solution = pft.solve();
-    } else if (alg == "PFT_NEH") {
-        PFT_NEH pft_neh(instance);
-        solution = pft_neh.solve(default_lambda(params, instance));
-    } else if (alg == "LPT") {
-        solution = LPT::solve(instance);
-    } else if (alg == "MinMax") {
-        MinMax mm(instance, params.minmax_alpha());
-        solution = mm.solve();
-    } else if (alg == "mNEH") {
-        solution = MNEH::solve(params.mneh_alpha(), instance);
-    } else if (alg == "PW") {
-        PW pw(instance);
-        solution = pw.solve();
-    } else if (alg == "GRASP_NEH") {
-        GRASP_NEH grasp_neh(instance, params.delta(), params.beta());
-        solution = grasp_neh.solve();
-    } else {
-        return false;
+    for(int i = 0; i < params.iter(); i++) {
+        if (alg == "NEH") {
+            NEH neh(instance);
+            solution = neh.solve(LPT::solve(instance).sequence);
+        } else if (alg == "PF") {
+            PF pf(instance);
+            solution = pf.solve();
+        } else if (alg == "PF_NEH") {
+            PF_NEH pf_neh(instance);
+            solution = pf_neh.solve(default_lambda(params, instance));
+        } else if (alg == "PFT") {
+            PFT pft(instance);
+            solution = pft.solve();
+        } else if (alg == "PFT_NEH") {
+            PFT_NEH pft_neh(instance);
+            solution = pft_neh.solve(default_lambda(params, instance));
+        } else if (alg == "LPT") {
+            solution = LPT::solve(instance);
+        } else if (alg == "MinMax") {
+            MinMax mm(instance, params.minmax_alpha());
+            solution = mm.solve();
+        } else if (alg == "mNEH") {
+            solution = MNEH::solve(params.mneh_alpha(), instance);
+        } else if (alg == "PW") {
+            PW pw(instance);
+            solution = pw.solve();
+        } else if (alg == "GRASP_NEH") {
+            GRASP_NEH grasp_neh(instance, params.delta(), params.beta());
+            solution = grasp_neh.solve();
+        } else {
+            return false;
+        }
     }
 
     const auto end = std::chrono::steady_clock::now();
     const double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
 
-    print_solution(alg, solution, elapsed_ms, params.verbose());
+    print_solution(alg, solution, elapsed_ms/params.iter(), params.verbose());
 
     return true;
 }

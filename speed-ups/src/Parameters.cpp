@@ -21,7 +21,7 @@ void config_argparse(argparse::ArgumentParser &cli) {
     cli.add_argument("-n", "--iters")
         .help("benchmark repetitions per (speed up, instance)")
         .metavar("ITERS")
-        .default_value(size_t(5))
+        .default_value(size_t(10))
         .scan<'i', size_t>();
 
     cli.add_argument("-s", "--seed")
