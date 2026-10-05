@@ -26,6 +26,7 @@ import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -112,7 +113,12 @@ def main():
     parser.add_argument("--time-limit-ms", type=float, default=2000.0,
                         help="orçamento de tempo compartilhado por TODA entrada (default: 2000ms, repassado ao "
                              "binário's --time-limit-ms)")
+    parser.add_argument("-j", "--threads", type=int, default=1,
+                        help="nº de execuções do binário em paralelo (default: 1). Atenção: rodar em "
+                             "paralelo pode afetar as medições de tempo")
     args = parser.parse_args()
+    if args.threads < 1:
+        parser.error("--threads deve ser >= 1")
 
     os.chdir(SCRIPT_DIR)
 
@@ -126,10 +132,12 @@ def main():
 
     # entrada -> [linha, ...], preservando a ordem menor->maior das instâncias.
     per_entry = {}
-    for i, instance_path in enumerate(instances, start=1):
-        log(f"[{i}/{len(instances)}] {instance_path}")
-        for entry, rows in run_one(instance_path, args.iters, args.seed, args.time_limit_ms, []).items():
-            per_entry.setdefault(entry, []).extend(rows)
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        futures = [executor.submit(run_one, p, args.iters, args.seed, args.time_limit_ms, []) for p in instances]
+        for i, (instance_path, future) in enumerate(zip(instances, futures), start=1):
+            for entry, rows in future.result().items():
+                per_entry.setdefault(entry, []).extend(rows)
+            log(f"[{i}/{len(instances)}] {instance_path}")
 
     for entry, rows in per_entry.items():
         out_path = os.path.join(args.results_dir, f"{entry}.csv")

@@ -25,6 +25,7 @@ import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -142,7 +143,12 @@ def main():
                         help="não grava trajectories/ (sweep mais rápido e leve)")
     parser.add_argument("--trajectory-max-rows", type=int, default=None,
                         help="repassado ao binário --trajectory-max-rows (default do binário: 2000)")
+    parser.add_argument("-j", "--threads", type=int, default=1,
+                        help="nº de execuções do binário em paralelo (default: 1). Atenção: rodar em "
+                             "paralelo pode afetar as medições de tempo")
     args = parser.parse_args()
+    if args.threads < 1:
+        parser.error("--threads deve ser >= 1")
 
     os.chdir(SCRIPT_DIR)
 
@@ -168,14 +174,17 @@ def main():
     per_entry_summary = {}
     # (entrada, instância) -> [linha, ...]
     per_entry_instance_trajectory = {}
-    for i, instance_path in enumerate(instances, start=1):
-        log(f"[{i}/{len(instances)}] {instance_path}")
-        instance = os.path.basename(instance_path)
-        summary_rows, trajectory_rows = run_one(instance_path, args.iters, args.seed, args.time_limit_ms, extra_args)
-        for entry, rows in summary_rows.items():
-            per_entry_summary.setdefault(entry, []).extend(rows)
-        for entry, rows in trajectory_rows.items():
-            per_entry_instance_trajectory[(entry, instance)] = rows
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        futures = [executor.submit(run_one, p, args.iters, args.seed, args.time_limit_ms, extra_args)
+                   for p in instances]
+        for i, (instance_path, future) in enumerate(zip(instances, futures), start=1):
+            instance = os.path.basename(instance_path)
+            summary_rows, trajectory_rows = future.result()
+            for entry, rows in summary_rows.items():
+                per_entry_summary.setdefault(entry, []).extend(rows)
+            for entry, rows in trajectory_rows.items():
+                per_entry_instance_trajectory[(entry, instance)] = rows
+            log(f"[{i}/{len(instances)}] {instance_path}")
 
     for entry, rows in per_entry_summary.items():
         out_path = os.path.join(args.results_dir, f"{entry}.csv")

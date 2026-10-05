@@ -17,6 +17,7 @@ import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -78,7 +79,12 @@ def main():
     parser.add_argument("--results-dir", default="results", help="diretório de saída (default: results/)")
     parser.add_argument("--seed", type=int, help="seed passada para o binário (só afeta GRASP_NEH)")
     parser.add_argument("--dry-run", action="store_true", help="só imprime a ordem, não executa nada")
+    parser.add_argument("-j", "--threads", type=int, default=1,
+                        help="nº de execuções do binário em paralelo (default: 1). Atenção: rodar em "
+                             "paralelo pode afetar as medições de tempo")
     args = parser.parse_args()
+    if args.threads < 1:
+        parser.error("--threads deve ser >= 1")
 
     os.chdir(SCRIPT_DIR)
 
@@ -106,17 +112,24 @@ def main():
     total = len(algorithms) * len(instances)
     done = 0
     os.makedirs(args.results_dir, exist_ok=True)
-    for ai, algorithm in enumerate(algorithms, start=1):
-        out_path = os.path.join(args.results_dir, f"{algorithm}.txt")
-        with open(out_path, "w") as f:
-            log(f"[{ai}/{len(algorithms)}] {algorithm}")
-            for instance_path in instances:
-                result = run_one(algorithm, instance_path, args.seed)
-                f.write(f"{instance_path}\n{result}\n")
-                f.flush()
-                done += 1
-                log(f"  {done}/{total} {instance_path} -> {result}")
-            f.write("-\n")
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        # Submete tudo de uma vez; os resultados são gravados na ordem algoritmo-major.
+        futures = {
+            (algorithm, instance_path): executor.submit(run_one, algorithm, instance_path, args.seed)
+            for algorithm in algorithms
+            for instance_path in instances
+        }
+        for ai, algorithm in enumerate(algorithms, start=1):
+            out_path = os.path.join(args.results_dir, f"{algorithm}.txt")
+            with open(out_path, "w") as f:
+                log(f"[{ai}/{len(algorithms)}] {algorithm}")
+                for instance_path in instances:
+                    result = futures[(algorithm, instance_path)].result()
+                    f.write(f"{instance_path}\n{result}\n")
+                    f.flush()
+                    done += 1
+                    log(f"  {done}/{total} {instance_path} -> {result}")
+                f.write("-\n")
 
     log(f"pronto: {done} execuções em {args.results_dir}/")
 

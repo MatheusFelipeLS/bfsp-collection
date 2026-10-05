@@ -15,6 +15,7 @@ import os
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -88,7 +89,12 @@ def main():
     parser.add_argument("--iters", type=int, default=5, help="repetições por speed up (default: 5)")
     parser.add_argument("--seed", type=int, default=42, help="seed do RNG (default: 42)")
     parser.add_argument("--results-dir", default="results", help="diretório de saída (default: results/)")
+    parser.add_argument("-j", "--threads", type=int, default=1,
+                        help="nº de execuções do binário em paralelo (default: 1). Atenção: rodar em "
+                             "paralelo pode afetar as medições de tempo")
     args = parser.parse_args()
+    if args.threads < 1:
+        parser.error("--threads deve ser >= 1")
 
     os.chdir(SCRIPT_DIR)
 
@@ -102,10 +108,12 @@ def main():
 
     # speedup -> [linha, ...], preservando a ordem menor->maior das instâncias.
     per_speedup = {}
-    for i, instance_path in enumerate(instances, start=1):
-        log(f"[{i}/{len(instances)}] {instance_path}")
-        for speedup, row in run_one(instance_path, args.iters, args.seed).items():
-            per_speedup.setdefault(speedup, []).append(row)
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        futures = [executor.submit(run_one, p, args.iters, args.seed) for p in instances]
+        for i, (instance_path, future) in enumerate(zip(instances, futures), start=1):
+            for speedup, row in future.result().items():
+                per_speedup.setdefault(speedup, []).append(row)
+            log(f"[{i}/{len(instances)}] {instance_path}")
 
     for speedup, rows in per_speedup.items():
         out_path = os.path.join(args.results_dir, f"{speedup}.csv")
