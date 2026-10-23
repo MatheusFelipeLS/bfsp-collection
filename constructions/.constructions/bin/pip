@@ -1,4 +1,4 @@
-#!/home/matheus/bfsp-collection/constructions/.constructions/bin/python3
+#!/home/matheus/Documents/bfsp-collection/constructions/.constructions/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

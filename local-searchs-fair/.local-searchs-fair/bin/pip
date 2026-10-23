@@ -1,4 +1,4 @@
-#!/home/matheus/bfsp-collection/local-searchs-fair/.local-searchs-fair/bin/python3
+#!/home/matheus/Documents/bfsp-collection/local-searchs-fair/.local-searchs-fair/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
