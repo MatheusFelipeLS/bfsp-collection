@@ -16,7 +16,6 @@
 // `best_cost < original_cost` is therefore always false. best_swap_ig NEVER
 // applies a move - see the "Bugs e peculiaridades conhecidas" section of the
 // README for the full trace.
-void best_swap_ig(Solution &solution, Instance &instance);
 
 // Same neighbourhood, with the comparison bug fixed (compares copy.cost
 // instead of solution.cost), for side-by-side comparison against best_swap_ig.

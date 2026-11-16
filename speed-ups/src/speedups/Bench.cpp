@@ -278,9 +278,9 @@ const std::vector<std::pair<std::string, BenchFn>> &registry() {
         {"taillard-insertion", bench_taillard_insertion},
         {"grabowski-block", bench_grabowski_block},
         {"partial-recalc", bench_partial_recalc},
-        {"edge-insertion", bench_edge_insertion},
-        {"alpha-sigma", bench_alpha_sigma},
-        {"preallocated-buffers", bench_preallocated_buffers},
+        // {"edge-insertion", bench_edge_insertion},
+        // {"alpha-sigma", bench_alpha_sigma},
+        // {"preallocated-buffers", bench_preallocated_buffers},
     };
     return reg;
 }

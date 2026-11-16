@@ -15,7 +15,6 @@
 #include "constructions/PF_NEH.h"
 #include "local-search/BestSwapIg.h"
 #include "local-search/EdgeInsertion.h"
-#include "local-search/Grabowski.h"
 #include "local-search/Hvns.h"
 #include "local-search/MrlsPEda.h"
 #include "local-search/RLS.h"
@@ -89,7 +88,8 @@ ig::RunResult run_ig_once(const char *name, Instance &instance, const Parameters
     const double T = params.temperature() * (double)instance.all_processing_times_sum() /
                       (10.0 * (double)instance.num_jobs() * (double)instance.num_machines());
 
-    const double time_limit_ms = params.time_limit_ms();
+    // const double time_limit_ms = params.time_limit_ms();
+    const double time_limit_ms = 10 * instance.num_jobs() * instance.num_machines();
     const size_t destroy_size = params.destroy_size();
     const size_t trajectory_max_rows = params.trajectory_max_rows();
 
@@ -206,12 +206,6 @@ std::vector<ig::RunResult> bench_rls(Instance &instance, const Parameters &param
     return run_entry("rls", instance, params, seed, noop_setup, step, "", trajectories);
 }
 
-std::vector<ig::RunResult> bench_rls_grabowski(Instance &instance, const Parameters &params, size_t seed,
-                                               std::vector<ig::TrajectoryBlock> &trajectories) {
-    StepFn step = [](Solution &s, Instance &i, std::vector<size_t> &ref) { rls_grabowski(s, ref, i); };
-    return run_entry("rls-grabowski", instance, params, seed, noop_setup, step, "", trajectories);
-}
-
 // ---------------------------------------------------------------------------
 // #3 - DE_ABC's single-pass rls (own signature, no ref parameter)
 // ---------------------------------------------------------------------------
@@ -232,22 +226,10 @@ std::vector<ig::RunResult> bench_mrls_p_eda(Instance &instance, const Parameters
     return run_entry("mrls-p-eda", instance, params, seed, noop_setup, step, "", trajectories);
 }
 
-// ---------------------------------------------------------------------------
-// #5/#6 - BestSwap (IG_IJ/IG_VND1/IG_VND2): faithful bug + fixed comparison.
-// `best_swap_ig` is byte-identical to IG_IJ's own private `BestSwap` method
-// (IG_IJ.cpp:40-82), bug included.
-// ---------------------------------------------------------------------------
-std::vector<ig::RunResult> bench_best_swap_ig(Instance &instance, const Parameters &params, size_t seed,
-                                              std::vector<ig::TrajectoryBlock> &trajectories) {
-    StepFn step = [](Solution &s, Instance &i, std::vector<size_t> &) { best_swap_ig(s, i); };
-    return run_entry("best-swap-ig", instance, params, seed, noop_setup, step,
-                     "comparison bug reproduced faithfully: always a no-op, see README", trajectories);
-}
-
 std::vector<ig::RunResult> bench_best_swap_ig_fixed(Instance &instance, const Parameters &params, size_t seed,
                                                     std::vector<ig::TrajectoryBlock> &trajectories) {
     StepFn step = [](Solution &s, Instance &i, std::vector<size_t> &) { best_swap_ig_fixed(s, i); };
-    return run_entry("best-swap-ig-fixed", instance, params, seed, noop_setup, step, "", trajectories);
+    return run_entry("best-swap-ig", instance, params, seed, noop_setup, step, "", trajectories);
 }
 
 // ---------------------------------------------------------------------------
@@ -260,36 +242,18 @@ std::vector<ig::RunResult> bench_swap_first_ig(Instance &instance, const Paramet
 }
 
 // ---------------------------------------------------------------------------
-// #8/#9 - VND drivers (IG_VND1, IG_VND2) - use the host loop's job-id
-// reference directly.
-// ---------------------------------------------------------------------------
-std::vector<ig::RunResult> bench_vnd1(Instance &instance, const Parameters &params, size_t seed,
-                                      std::vector<ig::TrajectoryBlock> &trajectories) {
-    StepFn step = [](Solution &s, Instance &i, std::vector<size_t> &ref) { vnd1(s, ref, i); };
-    return run_entry("vnd1", instance, params, seed, noop_setup, step,
-                     "k=2 (best-swap-ig) never contributes: see best-swap-ig's bug", trajectories);
-}
-
-std::vector<ig::RunResult> bench_vnd2(Instance &instance, const Parameters &params, size_t seed,
-                                      std::vector<ig::TrajectoryBlock> &trajectories) {
-    StepFn step = [](Solution &s, Instance &i, std::vector<size_t> &ref) { vnd2(s, ref, i); };
-    return run_entry("vnd2", instance, params, seed, noop_setup, step,
-                     "k=1 (best-swap-ig) is dead: see best-swap-ig's bug", trajectories);
-}
-
-// ---------------------------------------------------------------------------
 // #10/#11 - vnd1/vnd2 with the BestSwap comparison bug fixed (not in the repo)
 // ---------------------------------------------------------------------------
 std::vector<ig::RunResult> bench_vnd1_fixed(Instance &instance, const Parameters &params, size_t seed,
                                             std::vector<ig::TrajectoryBlock> &trajectories) {
     StepFn step = [](Solution &s, Instance &i, std::vector<size_t> &ref) { vnd1_fixed(s, ref, i); };
-    return run_entry("vnd1-fixed", instance, params, seed, noop_setup, step, "", trajectories);
+    return run_entry("vnd1", instance, params, seed, noop_setup, step, "", trajectories);
 }
 
 std::vector<ig::RunResult> bench_vnd2_fixed(Instance &instance, const Parameters &params, size_t seed,
                                             std::vector<ig::TrajectoryBlock> &trajectories) {
     StepFn step = [](Solution &s, Instance &i, std::vector<size_t> &ref) { vnd2_fixed(s, ref, i); };
-    return run_entry("vnd2-fixed", instance, params, seed, noop_setup, step, "", trajectories);
+    return run_entry("vnd2", instance, params, seed, noop_setup, step, "", trajectories);
 }
 
 // ---------------------------------------------------------------------------
@@ -458,16 +422,12 @@ using BenchFn = std::function<std::vector<ig::RunResult>(Instance &, const Param
 const std::vector<std::pair<std::string, BenchFn>> &registry() {
     static const std::vector<std::pair<std::string, BenchFn>> reg = {
         {"rls", bench_rls},
-        // {"rls-grabowski", bench_rls_grabowski},
         {"rls-de-abc", bench_rls_de_abc},
         {"mrls-p-eda", bench_mrls_p_eda},
-        // {"best-swap-ig", bench_best_swap_ig},
-        {"best-swap-ig-fixed", bench_best_swap_ig_fixed},
+        {"best-swap-ig", bench_best_swap_ig_fixed},
         {"swap-first-ig", bench_swap_first_ig},
-        // {"vnd1", bench_vnd1},
-        // {"vnd2", bench_vnd2},
-        {"vnd1-fixed", bench_vnd1_fixed},
-        {"vnd2-fixed", bench_vnd2_fixed},
+        {"vnd1", bench_vnd1_fixed},
+        {"vnd2", bench_vnd2_fixed},
         {"ig-ij-dispatch", bench_ig_ij_dispatch},
         {"svns-s-swap", bench_svns_s_swap},
         {"svns-s-insertion", bench_svns_s_insertion},
