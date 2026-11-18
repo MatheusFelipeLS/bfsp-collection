@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Instance.h"
 #include "Solution.h"
+#include "Stats.h"
 #include <algorithm>
 #include <limits>
 #include <utility>
@@ -38,10 +39,17 @@ size_t NEH::insert_calculation(const size_t i, const size_t k, const size_t best
         old = value;
     };
 
+    // Work counter: `scanned` machines evaluated out of m (one update per position).
+    auto count = [this](size_t scanned) {
+        stats::get().machines_scanned += scanned;
+        stats::get().machines_total += m_instance.num_machines();
+    };
+
     size_t value = std::max(e[i - 1][0] + p(k, 0), e[i - 1][1]);
     set_old_and_max(i, 0, value);
 
     if (max_value >= best_value) {
+        count(1);
         return max_value;
     }
 
@@ -50,6 +58,7 @@ size_t NEH::insert_calculation(const size_t i, const size_t k, const size_t best
         set_old_and_max(i, j, value);
 
         if (max_value >= best_value) {
+            count(j + 1);
             return max_value;
         }
     }
@@ -57,6 +66,7 @@ size_t NEH::insert_calculation(const size_t i, const size_t k, const size_t best
     value = old + p(k, m_instance.num_machines() - 1);
     set_old_and_max(i, m_instance.num_machines() - 1, value);
 
+    count(m_instance.num_machines());
     return max_value;
 }
 
@@ -93,6 +103,13 @@ std::pair<size_t, size_t> NEH::taillard_grabowski_best_ins(const Solution &s, co
 
     size_t best_index = 0;
     size_t best_value = std::min(max_value, s.cost);
+
+    // Work counter: positions allowed by the block restriction out of all
+    // s.sequence.size() + 1 insertion positions (one update per reinserted job).
+    stats::get().positions_total += s.sequence.size() + 1;
+    for (const auto &range : ranges) {
+        stats::get().positions_evaluated += range.second - range.first + 1;
+    }
 
     for (const auto &range : ranges) {
         for (size_t i = range.first; i <= range.second; i++) {
@@ -140,6 +157,45 @@ std::pair<size_t, size_t> NEH::taillard_best_insertion(const std::vector<size_t>
 
     for (size_t i = 1; i <= s.size(); i++) {
         max_value = insert_calculation(i, k, best_value);
+
+        if (max_value < best_value) {
+            best_value = max_value;
+            best_index = i;
+        }
+    }
+
+    return {best_index, best_value};
+}
+
+std::pair<size_t, size_t> NEH::taillard_best_insertion_no_cutoff(const std::vector<size_t> &s, size_t k) {
+    m_inner.sequence = s;
+
+    core::calculate_departure_times(m_instance, m_inner);
+    core::calculate_tail(m_instance, m_inner);
+
+    auto &q = m_inner.tail;
+
+    auto p = [this](size_t i, size_t j) { return m_instance.p(i, j); };
+
+    size_t max_value = 0;
+    size_t old = 0;
+    auto set_old_and_max = [&old, &max_value, &q](size_t i, size_t j, size_t value) {
+        max_value = std::max(value + q[i][j], max_value);
+        old = value;
+    };
+
+    set_old_and_max(0, 0, p(k, 0));
+    for (size_t j = 1; j < m_instance.num_machines(); j++) {
+        set_old_and_max(0, j, old + p(k, j));
+    }
+
+    size_t best_index = 0;
+    size_t best_value = max_value;
+
+    for (size_t i = 1; i <= s.size(); i++) {
+        // Infinite bound: the `max_value >= best_value` cut-off inside
+        // insert_calculation never fires, so all m machines are always scanned.
+        max_value = insert_calculation(i, k, std::numeric_limits<size_t>::max());
 
         if (max_value < best_value) {
             best_value = max_value;

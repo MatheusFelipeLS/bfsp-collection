@@ -20,6 +20,15 @@ std::pair<size_t, size_t> best_insertion(const std::vector<size_t> &seq, size_t 
 // Baseline for #1: a whole NEH construction driven by naive::best_insertion.
 Solution neh_construct(std::vector<size_t> phi, Instance &instance);
 
+// Baseline for the RLS family (#1 Taillard, its early cut-off and #2 Grabowski):
+// the same referenced local search as ::rls (same reference order, same removal,
+// same first-argmin tie-breaking, same acceptance rule, same stop criterion),
+// but every one of the n insertion positions of every job is scored by a full
+// O(n*m) schedule recompute - no head/tail matrices, no cut-off, no block
+// restriction. Only a single probe buffer is reused (allocated once per call),
+// so allocation cost does not leak into the comparison.
+bool rls(Solution &s, const std::vector<size_t> &ref, Instance &instance);
+
 // Baseline for #3: best-improvement swap over the full pair neighbourhood, every
 // candidate scored with a full recompute. Mirrors swap_local_search_best.
 bool swap_neighborhood_best(Solution &s, Instance &instance);

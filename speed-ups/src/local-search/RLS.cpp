@@ -20,6 +20,57 @@
 //   - rls_grabowski : #1 + #2 (block restriction) + #3 (partial recompute of the
 //                     accepted move via core::partial_recalculate_solution)
 
+namespace {
+
+// Body shared by the ablation variants: identical to `rls` below, except that
+// the best-insertion evaluator is a parameter.
+template <typename BestInsertion>
+bool rls_with(Solution &s, const std::vector<size_t> &ref, Instance &instance, BestInsertion best_insertion) {
+    bool improved = false;
+    size_t j = 0;
+    size_t cnt = 0;
+    while (cnt < instance.num_jobs()) {
+        j = (j + 1) % instance.num_jobs();
+
+        const size_t job = ref[j];
+        for (size_t i = 0; i < s.sequence.size(); i++) {
+            if (s.sequence[i] == job) {
+                s.sequence.erase(s.sequence.begin() + (long)i);
+            }
+        }
+
+        const auto [best_index, makespan] = best_insertion(s.sequence, job);
+        s.sequence.insert(s.sequence.begin() + (long)best_index, job);
+
+        if (makespan < s.cost) {
+            cnt = 0;
+            s.cost = makespan;
+            improved = true;
+            continue;
+        }
+
+        cnt++;
+    }
+
+    return improved;
+}
+
+} // namespace
+
+bool rls_taillard_no_cutoff(Solution &s, const std::vector<size_t> &ref, Instance &instance) {
+    NEH helper(instance);
+    return rls_with(s, ref, instance, [&helper](const std::vector<size_t> &seq, size_t job) {
+        return helper.taillard_best_insertion_no_cutoff(seq, job);
+    });
+}
+
+bool rls_taillard(Solution &s, const std::vector<size_t> &ref, Instance &instance) {
+    NEH helper(instance);
+    return rls_with(s, ref, instance, [&helper](const std::vector<size_t> &seq, size_t job) {
+        return helper.taillard_best_insertion(seq, job);
+    });
+}
+
 bool rls_grabowski(Solution &s, const std::vector<size_t> &ref, Instance &instance) {
     bool improved = false;
     size_t j = 0;

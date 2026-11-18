@@ -51,6 +51,70 @@ Solution naive::neh_construct(std::vector<size_t> phi, Instance &instance) {
     return s;
 }
 
+namespace {
+
+// All n+1 insertion makespans of `job` into `seq`, each by a full recompute of
+// `probe` (a caller-owned buffer, so no allocation per candidate). First argmin,
+// i.e. the same tie-breaking as NEH::taillard_best_insertion.
+std::pair<size_t, size_t> full_recompute_best_insertion(const std::vector<size_t> &seq, size_t job,
+                                                        Instance &instance, Solution &probe) {
+    probe.sequence.assign(seq.begin(), seq.end());
+    probe.sequence.insert(probe.sequence.begin(), job);
+
+    size_t best_index = 0;
+    size_t best_value = std::numeric_limits<size_t>::max();
+
+    for (size_t i = 0; i <= seq.size(); i++) {
+        if (i > 0) {
+            // slide `job` one slot to the right: position i-1 -> i
+            std::swap(probe.sequence[i - 1], probe.sequence[i]);
+        }
+        core::recalculate_solution(instance, probe);
+        if (probe.cost < best_value) {
+            best_value = probe.cost;
+            best_index = i;
+        }
+    }
+
+    return {best_index, best_value};
+}
+
+} // namespace
+
+bool naive::rls(Solution &s, const std::vector<size_t> &ref, Instance &instance) {
+    bool improved = false;
+    size_t j = 0;
+    size_t cnt = 0;
+
+    Solution probe; // the only buffer; grows once on the first recompute
+    probe.sequence.reserve(instance.num_jobs());
+
+    while (cnt < instance.num_jobs()) {
+        j = (j + 1) % instance.num_jobs();
+
+        const size_t job = ref[j];
+        for (size_t i = 0; i < s.sequence.size(); i++) {
+            if (s.sequence[i] == job) {
+                s.sequence.erase(s.sequence.begin() + (long)i);
+            }
+        }
+
+        const auto [best_index, makespan] = full_recompute_best_insertion(s.sequence, job, instance, probe);
+        s.sequence.insert(s.sequence.begin() + (long)best_index, job);
+
+        if (makespan < s.cost) {
+            cnt = 0;
+            s.cost = makespan;
+            improved = true;
+            continue;
+        }
+
+        cnt++;
+    }
+
+    return improved;
+}
+
 bool naive::swap_neighborhood_best(Solution &s, Instance &instance) {
     core::recalculate_solution(instance, s);
 

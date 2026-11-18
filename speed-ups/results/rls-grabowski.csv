@@ -1,0 +1,16 @@
+instance,naive_ms,accel_ms,factor,pruned_machines_pct,discarded_positions_pct,note
+J20M5N1,0.218709,0.123818,1.76638,63.6364,4.16667,start=1828 naive=1425 grabowski=1419 same_trajectory=0
+J20M10N1,1.18315,0.126092,9.38321,58.5466,4.60784,start=2140 naive=1730 grabowski=1784 same_trajectory=0
+J20M20N1,3.00094,0.20973,14.3086,73.215,3.59649,start=2974 naive=2548 grabowski=2557 same_trajectory=0
+J50M5N1,3.29814,0.933067,3.53473,67.3552,1.76522,start=3975 naive=3358 grabowski=3318 same_trajectory=0
+J50M10N1,23.5821,1.14142,20.6603,70.2245,1.8209,start=4711 naive=3852 grabowski=3868 same_trajectory=0
+J50M20N1,41.472,2.24617,18.4634,74.4821,2.02985,start=5504 naive=4720 grabowski=4793 same_trajectory=0
+J100M5N1,111.715,3.11694,35.8411,68.8256,1.08675,start=8059 naive=6466 grabowski=6581 same_trajectory=0
+J100M10N1,123.47,16.8929,7.309,76.655,1.2212,start=8854 naive=7510 grabowski=7470 same_trajectory=0
+J100M20N1,230.58,10.3303,22.3207,79.0725,1.05288,start=9596 naive=8277 grabowski=8225 same_trajectory=0
+J200M5N1,499.938,15.0429,33.2342,71.5322,0.443867,start=15790 naive=12712 grabowski=12727 same_trajectory=0
+J200M10N1,2492.71,56.009,44.5055,79.534,0.492418,start=16855 naive=14073 grabowski=14147 same_trajectory=0
+J200M20N1,3722.98,35.6326,104.483,82.7953,0.594732,start=17521 naive=15509 grabowski=15526 same_trajectory=0
+J500M5N1,17597.6,103.392,170.202,69.6194,0.201355,start=38991 naive=31084 grabowski=31428 same_trajectory=0
+J500M10N1,28923.6,229.63,125.958,79.5992,0.178371,start=41294 naive=35085 grabowski=34645 same_trajectory=0
+J500M20N1,63302.7,382.893,165.327,84.3872,0.255009,start=43146 naive=37981 grabowski=37855 same_trajectory=0

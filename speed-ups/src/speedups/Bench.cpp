@@ -4,15 +4,18 @@
 #include <chrono>
 #include <cmath>
 #include <functional>
+#include <iostream>
 #include <limits>
 #include <numeric>
 #include <sstream>
+#include <tuple>
 #include <utility>
 
 #include "Core.h"
 #include "Instance.h"
 #include "RNG.h"
 #include "Solution.h"
+#include "Stats.h"
 
 #include "constructions/NEH.h"
 #include "local-search/EdgeInsertion.h"
@@ -38,11 +41,34 @@ std::vector<size_t> random_perm(size_t n) {
     return v;
 }
 
+// Starting point shared by every benchmark of one instance, drawn ONCE in
+// bench::run: every component (and its naive baseline) starts from exactly the
+// same solution, whatever the order of the benchmarks or of their own RNG draws.
+struct Input {
+    std::vector<size_t> start; // completely random starting sequence
+    std::vector<size_t> ref;   // reference order for the RLS family
+};
+
 size_t recompute_cost(const std::vector<size_t> &seq, Instance &instance) {
     Solution tmp;
     tmp.sequence = seq;
     core::recalculate_solution(instance, tmp);
     return tmp.cost;
+}
+
+double pct(size_t part, size_t whole) { return whole > 0 ? 100.0 * (double)part / (double)whole : 0.0; }
+
+// Runs `fn` once more, outside any timed region, with fresh counters, and
+// returns what it did. Used to fill the % columns.
+stats::Counters count_work(const std::function<void()> &fn) {
+    stats::reset();
+    fn();
+    return stats::get();
+}
+
+double pruned_machines_pct(const stats::Counters &c) { return pct(c.machines_total - c.machines_scanned, c.machines_total); }
+double discarded_positions_pct(const stats::Counters &c) {
+    return pct(c.positions_total - c.positions_evaluated, c.positions_total);
 }
 
 bench::Result blank(const char *name, Instance &instance, const Parameters &params) {
@@ -57,7 +83,9 @@ bench::Result blank(const char *name, Instance &instance, const Parameters &para
 // ---------------------------------------------------------------------------
 // #1 - Taillard's acceleration for the insertion neighbourhood (NEH)
 // ---------------------------------------------------------------------------
-bench::Result bench_taillard_insertion(Instance &instance, const Parameters &params) {
+// NEH builds a solution from scratch, so it ignores input.start and keeps
+// its own insertion order (stpt_sort).
+bench::Result bench_taillard_insertion(Instance &instance, const Parameters &params, const Input & /*input*/) {
     bench::Result r = blank("taillard-insertion", instance, params);
     const std::vector<size_t> phi = core::stpt_sort(instance);
 
@@ -75,6 +103,10 @@ bench::Result bench_taillard_insertion(Instance &instance, const Parameters &par
     r.correct = accel.sequence == naive_sol.sequence && accel.cost == naive_sol.cost &&
                 accel.cost == recompute_cost(accel.sequence, instance);
     r.factor = r.accel_ms > 0 ? r.naive_ms / r.accel_ms : 0.0;
+    r.pruned_machines_pct = pruned_machines_pct(count_work([&] {
+        NEH neh(instance);
+        (void)neh.solve(phi);
+    }));
     r.note = "makespan=" + std::to_string(accel.cost);
     return r;
 }
@@ -82,11 +114,12 @@ bench::Result bench_taillard_insertion(Instance &instance, const Parameters &par
 // ---------------------------------------------------------------------------
 // #2 - Grabowski-Wodecki critical-block restriction (rls_grabowski vs rls)
 // ---------------------------------------------------------------------------
-bench::Result bench_grabowski_block(Instance &instance, const Parameters &params) {
+[[maybe_unused]] bench::Result bench_grabowski_block(Instance &instance, const Parameters &params) {
     bench::Result r = blank("grabowski-block", instance, params);
 
-    NEH neh(instance);
-    Solution start = neh.solve(core::stpt_sort(instance));
+    // Completely random starting solution: leaves the local search real work to do.
+    Solution start;
+    start.sequence = random_perm(instance.num_jobs());
     core::recalculate_solution(instance, start);
     const std::vector<size_t> ref = random_perm(instance.num_jobs());
 
@@ -117,11 +150,80 @@ bench::Result bench_grabowski_block(Instance &instance, const Parameters &params
 }
 
 // ---------------------------------------------------------------------------
+// RLS family - #1 Taillard (with and without the early cut-off) and #2 Grabowski,
+// each measured inside the referenced local search against naive::rls.
+//
+// All rows share ONE random start, ONE reference order and ONE naive::rls
+// measurement (the baseline is identical for the three, and it is by far the
+// most expensive part of the benchmark).
+//   rls-taillard        rls_taillard_no_cutoff  same trajectory as naive -> identical result
+//   rls-taillard-cutoff rls_taillard            same trajectory as naive -> identical result
+//   rls-grabowski       rls_grabowski           different acceptance rule -> may end in a
+//                                               different local optimum; checked for validity
+// ---------------------------------------------------------------------------
+std::vector<bench::Result> bench_rls(Instance &instance, const Parameters &params, const Input &input) {
+    Solution start;
+    start.sequence = input.start;
+    core::recalculate_solution(instance, start);
+    const std::vector<size_t> &ref = input.ref;
+
+    Solution naive_sol;
+    const double naive_ms = time_ms(
+        [&] {
+            naive_sol = start;
+            naive::rls(naive_sol, ref, instance);
+        },
+        params.iters());
+    const bool naive_valid = naive_sol.cost == recompute_cost(naive_sol.sequence, instance);
+
+    auto measure = [&](const char *name, auto &&fn) {
+        bench::Result r = blank(name, instance, params);
+        Solution out;
+        const auto run_once = [&] {
+            out = start;
+            fn(out, ref, instance);
+        };
+        r.accel_ms = time_ms(run_once, params.iters());
+        r.naive_ms = naive_ms;
+        r.factor = r.accel_ms > 0 ? r.naive_ms / r.accel_ms : 0.0;
+        const stats::Counters work = count_work(run_once);
+        return std::make_tuple(r, out, work);
+    };
+
+    std::vector<bench::Result> out;
+
+    for (const auto &[name, fn] : {std::make_pair("rls-taillard", &rls_taillard_no_cutoff),
+                                   std::make_pair("rls-taillard-cutoff", &rls_taillard)}) {
+        auto [r, sol, work] = measure(name, fn);
+        r.correct = naive_valid && sol.sequence == naive_sol.sequence && sol.cost == naive_sol.cost;
+        if (fn == &rls_taillard) { // the no-cut-off variant has nothing to report
+            r.pruned_machines_pct = pruned_machines_pct(work);
+        }
+        r.note = "start=" + std::to_string(start.cost) + " makespan=" + std::to_string(sol.cost);
+        out.push_back(r);
+    }
+
+    {
+        auto [r, sol, work] = measure("rls-grabowski", &rls_grabowski);
+        r.pruned_machines_pct = pruned_machines_pct(work);
+        r.discarded_positions_pct = discarded_positions_pct(work);
+        const bool valid = sol.cost == recompute_cost(sol.sequence, instance) && sol.cost <= start.cost;
+        r.correct = naive_valid && valid;
+        r.note = "start=" + std::to_string(start.cost) + " naive=" + std::to_string(naive_sol.cost) +
+                 " grabowski=" + std::to_string(sol.cost) +
+                 " same_trajectory=" + (sol.sequence == naive_sol.sequence ? "1" : "0");
+        out.push_back(r);
+    }
+
+    return out;
+}
+
+// ---------------------------------------------------------------------------
 // #3 - Incremental makespan recomputation (swap neighbourhood, one best-move scan)
 // ---------------------------------------------------------------------------
-bench::Result bench_partial_recalc(Instance &instance, const Parameters &params) {
+bench::Result bench_partial_recalc(Instance &instance, const Parameters &params, const Input &input) {
     bench::Result r = blank("partial-recalc", instance, params);
-    const std::vector<size_t> raw = core::stpt_sort(instance); // deliberately mediocre -> the scan finds a move
+    const std::vector<size_t> &raw = input.start;
 
     Solution accel;
     Solution naive_sol;
@@ -144,14 +246,14 @@ bench::Result bench_partial_recalc(Instance &instance, const Parameters &params)
     r.correct = accel.sequence == naive_sol.sequence && accel.cost == naive_sol.cost &&
                 accel.cost == recompute_cost(accel.sequence, instance);
     r.factor = r.accel_ms > 0 ? r.naive_ms / r.accel_ms : 0.0;
-    r.note = "makespan=" + std::to_string(accel.cost);
+    r.note = "start=" + std::to_string(recompute_cost(raw, instance)) + " makespan=" + std::to_string(accel.cost);
     return r;
 }
 
 // ---------------------------------------------------------------------------
 // #4 - Taillard's acceleration extended to the adjacent-pair (edge) neighbourhood
 // ---------------------------------------------------------------------------
-bench::Result bench_edge_insertion(Instance &instance, const Parameters &params) {
+[[maybe_unused]] bench::Result bench_edge_insertion(Instance &instance, const Parameters &params) {
     bench::Result r = blank("edge-insertion", instance, params);
     const std::vector<size_t> raw = core::stpt_sort(instance);
 
@@ -184,7 +286,7 @@ bench::Result bench_edge_insertion(Instance &instance, const Parameters &params)
 // ---------------------------------------------------------------------------
 // #5 - Incremental idle/blocking delta (alpha/sigma) for greedy construction
 // ---------------------------------------------------------------------------
-bench::Result bench_alpha_sigma(Instance &instance, const Parameters &params) {
+[[maybe_unused]] bench::Result bench_alpha_sigma(Instance &instance, const Parameters &params) {
     bench::Result r = blank("alpha-sigma", instance, params);
     const size_t n = instance.num_jobs();
     const std::vector<size_t> perm = random_perm(n);
@@ -237,7 +339,7 @@ bench::Result bench_alpha_sigma(Instance &instance, const Parameters &params) {
 // ---------------------------------------------------------------------------
 // #6 - Reused preallocated buffers (one NEH instance vs a fresh one per call)
 // ---------------------------------------------------------------------------
-bench::Result bench_preallocated_buffers(Instance &instance, const Parameters &params) {
+[[maybe_unused]] bench::Result bench_preallocated_buffers(Instance &instance, const Parameters &params) {
     bench::Result r = blank("preallocated-buffers", instance, params);
     constexpr size_t CALLS = 2000;
 
@@ -271,16 +373,37 @@ bench::Result bench_preallocated_buffers(Instance &instance, const Parameters &p
     return r;
 }
 
-using BenchFn = std::function<bench::Result(Instance &, const Parameters &)>;
+using BenchFn = std::function<std::vector<bench::Result>(Instance &, const Parameters &, const Input &)>;
 
-const std::vector<std::pair<std::string, BenchFn>> &registry() {
-    static const std::vector<std::pair<std::string, BenchFn>> reg = {
-        {"taillard-insertion", bench_taillard_insertion},
-        {"grabowski-block", bench_grabowski_block},
-        {"partial-recalc", bench_partial_recalc},
-        // {"edge-insertion", bench_edge_insertion},
-        // {"alpha-sigma", bench_alpha_sigma},
-        // {"preallocated-buffers", bench_preallocated_buffers},
+struct Entry {
+    std::string group;             // name accepted by -p for the whole group
+    std::vector<std::string> rows; // row names it emits (also accepted by -p)
+    BenchFn fn;
+};
+
+BenchFn single(bench::Result (*fn)(Instance &, const Parameters &, const Input &)) {
+    return [fn](Instance &instance, const Parameters &params, const Input &input) {
+        return std::vector<bench::Result>{fn(instance, params, input)};
+    };
+}
+
+// For the disabled benchmarks below, which still draw their own random input.
+[[maybe_unused]] BenchFn single(bench::Result (*fn)(Instance &, const Parameters &)) {
+    return [fn](Instance &instance, const Parameters &params, const Input & /*input*/) {
+        return std::vector<bench::Result>{fn(instance, params)};
+    };
+}
+
+const std::vector<Entry> &registry() {
+    static const std::vector<Entry> reg = {
+        {"taillard-insertion", {"taillard-insertion"}, single(bench_taillard_insertion)},
+        {"rls", {"rls-taillard", "rls-taillard-cutoff", "rls-grabowski"}, bench_rls},
+        {"partial-recalc", {"partial-recalc"}, single(bench_partial_recalc)},
+        // superseded by the "rls" group (rls_grabowski is now compared against naive::rls):
+        // {"grabowski-block", {"grabowski-block"}, single(bench_grabowski_block)},
+        // {"edge-insertion", {"edge-insertion"}, single(bench_edge_insertion)},
+        // {"alpha-sigma", {"alpha-sigma"}, single(bench_alpha_sigma)},
+        // {"preallocated-buffers", {"preallocated-buffers"}, single(bench_preallocated_buffers)},
     };
     return reg;
 }
@@ -290,20 +413,51 @@ const std::vector<std::pair<std::string, BenchFn>> &registry() {
 std::vector<bench::Result> bench::run(const std::optional<std::string> &which, Instance &instance,
                                       const Parameters &params) {
     std::vector<bench::Result> out;
-    for (const auto &[name, fn] : registry()) {
-        if (which && *which != name) {
+    const size_t seed = RNG::instance().seed();
+
+    // One starting point per instance, shared by every benchmark (see Input).
+    RNG::instance().set_seed(seed);
+    Input input;
+    input.start = random_perm(instance.num_jobs());
+    input.ref = random_perm(instance.num_jobs());
+
+    for (const auto &entry : registry()) {
+        const bool whole_group = !which || *which == entry.group;
+        const bool one_row =
+            which && std::find(entry.rows.begin(), entry.rows.end(), *which) != entry.rows.end();
+        if (!whole_group && !one_row) {
             continue;
         }
-        out.push_back(fn(instance, params));
+        // Only matters for benchmarks that still draw their own randomness (the
+        // disabled ones): keeps them independent of which benchmarks ran before.
+        RNG::instance().set_seed(seed);
+        for (auto &r : entry.fn(instance, params, input)) {
+            if (!r.correct) {
+                std::cerr << "AVISO: verificação falhou em " << r.speedup << " (" << r.note << ")\n";
+            }
+            if (whole_group || r.speedup == *which) {
+                out.push_back(std::move(r));
+            }
+        }
     }
     return out;
 }
 
-std::string bench::header() { return "speedup,n,m,iters,naive_ms,accel_ms,factor,correct,note"; }
+std::string bench::header() {
+    return "speedup,n,m,iters,naive_ms,accel_ms,factor,pruned_machines_pct,discarded_positions_pct,note";
+}
 
 std::string bench::format(const bench::Result &r) {
     std::ostringstream os;
     os << r.speedup << ',' << r.n << ',' << r.m << ',' << r.iters << ',' << r.naive_ms << ',' << r.accel_ms << ','
-       << r.factor << ',' << (r.correct ? 1 : 0) << ',' << r.note;
+       << r.factor << ',';
+    if (r.pruned_machines_pct) {
+        os << *r.pruned_machines_pct;
+    }
+    os << ',';
+    if (r.discarded_positions_pct) {
+        os << *r.discarded_positions_pct;
+    }
+    os << ',' << r.note;
     return os.str();
 }

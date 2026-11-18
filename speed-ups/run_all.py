@@ -4,7 +4,8 @@ speed up em results/, consumível pelo output_to_excel.py.
 
 Para cada instância executa `./build/speed-ups <instância> -n <iters> -s <seed>`,
 que emite uma linha CSV por speed up, e reparte essas linhas em
-results/<speedup>.csv (colunas: instance,naive_ms,accel_ms,factor,correct,note --
+results/<speedup>.csv (colunas: instance,naive_ms,accel_ms,factor,pruned_machines_pct,
+discarded_positions_pct,note --
 sem n/m/iters).
 
 Ordem: instâncias da menor para a maior, desempate por (jobs, máquinas, número).
@@ -24,9 +25,14 @@ INSTANCES_DIR = "instances"
 
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N(\d+)$")
 # Colunas emitidas pelo binário, na ordem do CSV.
-BINARY_COLUMNS = ["speedup", "n", "m", "iters", "naive_ms", "accel_ms", "factor", "correct", "note"]
+BINARY_COLUMNS = [
+    "speedup", "n", "m", "iters", "naive_ms", "accel_ms", "factor",
+    "pruned_machines_pct", "discarded_positions_pct", "note",
+]
 # O que sobra por speed up depois de tirar speedup/n/m/iters.
-SHEET_COLUMNS = ["instance", "naive_ms", "accel_ms", "factor", "correct", "note"]
+SHEET_COLUMNS = [
+    "instance", "naive_ms", "accel_ms", "factor", "pruned_machines_pct", "discarded_positions_pct", "note",
+]
 
 # Subconjunto representativo (1 instância por grupo de tamanho). Use --all para varrer todas.
 DEFAULT_PICK = "N1"
@@ -63,13 +69,17 @@ def discover_instances(pick_all):
 
 
 def run_one(instance_path, iters, seed):
-    """Retorna {speedup: [instance, naive_ms, accel_ms, factor, correct, note]}."""
+    """Retorna {speedup: [instance, naive_ms, accel_ms, factor, pruned_machines_pct,
+    discarded_positions_pct, note]}."""
     cmd = ["./" + BINARY, instance_path, "-n", str(iters), "-s", str(seed)]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         log(f"  AVISO: {instance_path} -> rc={proc.returncode} stderr={proc.stderr.strip()!r}")
         return {}
     instance = os.path.basename(instance_path)
+    # O binário avisa no stderr quando a verificação de um speed up falha.
+    for warning in (l for l in proc.stderr.splitlines() if l.startswith("AVISO")):
+        log(f"  {instance}: {warning}")
     rows = {}
     for line in proc.stdout.strip().splitlines():
         parts = line.split(",", len(BINARY_COLUMNS) - 1)
@@ -77,7 +87,8 @@ def run_one(instance_path, iters, seed):
             continue
         rec = dict(zip(BINARY_COLUMNS, parts))
         rows[rec["speedup"]] = [
-            instance, rec["naive_ms"], rec["accel_ms"], rec["factor"], rec["correct"], rec["note"]
+            instance, rec["naive_ms"], rec["accel_ms"], rec["factor"],
+            rec["pruned_machines_pct"], rec["discarded_positions_pct"], rec["note"],
         ]
     return rows
 
