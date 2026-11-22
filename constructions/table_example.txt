@@ -1,23 +1,31 @@
 \begin{table}[htbp]
 \centering
-\caption{Resumo do desempenho global das heurísticas construtivas no BFSP.}
-\label{tab:resumo_construtivos}
+\caption{Tempo médio de execução em milissegundos (ms) por grupo de dimensão ($n \times m$).}
+\label{tab:tempo_por_grupo}
+\begin{scriptsize}
 \resizebox{\textwidth}{!}{
-\begin{tabular}{lcccccc}
+\begin{tabular}{ccccccccccc}
 \toprule
-\textbf{Algoritmo} & \textbf{ARPD (\%)} & \textbf{Gap Min (\%)} & \textbf{Gap Máx (\%)} & \textbf{Desv. Padrão (\%)} & \textbf{Tempo Médio (ms)} & \textbf{Tempo Máx (ms)} \\
+\textbf{Grupo ($n \times m$)} & \textbf{LPT} & \textbf{MinMax} & \textbf{PF} & \textbf{PW} & \textbf{PFT} & \textbf{GRASP\_NEH} & \textbf{NEH} & \textbf{mNEH} & \textbf{PF\_NEH} & \textbf{PFT\_NEH} \\
 \midrule
-PFT\_NEH   & \textbf{5,52} & -0,32 & \textbf{9,73} & 2,11 & 57,47 & 425,43 \\
-PF\_NEH    & 5,54 & -0,46 & 9,93 & 2,16 & 57,47 & 425,17 \\
-mNEH       & 5,63 & 1,89  & 10,89 & \textbf{1,78} & 1,30  & 8,04   \\
-NEH        & 6,40 & 2,17  & 10,68 & 1,89 & 1,24  & 7,71   \\
-GRASP\_NEH & 7,55 & 2,43  & 22,60 & 4,40 & 3,63  & 21,84  \\
-PFT        & 7,91 & -0,82 & 22,93 & 5,28 & 57,76 & 426,33 \\
-PW         & 7,99 & -0,87 & 20,72 & 5,19 & 4,45  & 29,28  \\
-PF         & 8,52 & -0,75 & 23,88 & 5,55 & 57,68 & 426,09 \\
-MinMax     & 12,99 & 7,23 & 24,53 & 3,52 & 2,64  & 19,12  \\
-LPT        & 22,06 & 12,87 & 31,97 & 4,41 & \textbf{0,05} & \textbf{0,18} \\
+$20 \times 5$   & 0,002 & 0,010 & 0,023 & 0,024 & 0,032 & 0,018 & 0,008 & 0,007 & 0,032 & 0,031 \\
+$20 \times 10$  & 0,003 & 0,017 & 0,029 & 0,033 & 0,035 & 0,022 & 0,010 & 0,010 & 0,043 & 0,040 \\
+$20 \times 20$  & 0,003 & 0,033 & 0,043 & 0,054 & 0,051 & 0,034 & 0,019 & 0,018 & 0,070 & 0,063 \\
+\midrule
+$50 \times 5$   & 0,007 & 0,052 & 0,196 & 0,129 & 0,232 & 0,118 & 0,038 & 0,034 & 0,260 & 0,236 \\
+$50 \times 10$  & 0,008 & 0,103 & 0,291 & 0,185 & 0,302 & 0,155 & 0,057 & 0,048 & 0,342 & 0,338 \\
+$50 \times 20$  & 0,009 & 0,212 & 0,464 & 0,289 & 0,529 & 0,241 & 0,077 & 0,089 & 0,610 & 0,576 \\
+\midrule
+$100 \times 5$  & 0,017 & 0,195 & 1,257 & 0,482 & 1,329 & 0,455 & 0,144 & 0,141 & 1,426 & 1,423 \\
+$100 \times 10$ & 0,016 & 0,396 & 1,869 & 0,690 & 1,881 & 0,588 & 0,185 & 0,222 & 2,033 & 2,054 \\
+$100 \times 20$ & 0,020 & 0,805 & 3,260 & 1,171 & 3,274 & 0,919 & 0,306 & 0,352 & 3,547 & 3,579 \\
+\midrule
+$200 \times 10$ & 0,051 & 1,525 & 14,441 & 2,539 & 14,476 & 2,215 & 0,783 & 0,856 & 14,523 & 14,591 \\
+$200 \times 20$ & 0,060 & 3,041 & 26,567 & 4,449 & 26,537 & 3,478 & 1,322 & 1,335 & 27,071 & 27,118 \\
+\midrule
+$500 \times 20$ & 0,161 & 18,952 & 423,627 & 27,801 & 424,469 & 21,685 & 7,492 & 7,794 & 423,848 & 423,877 \\
 \bottomrule
 \end{tabular}
 }
+\end{scriptsize}
 \end{table}

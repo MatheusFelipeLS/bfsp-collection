@@ -11,7 +11,7 @@ algoritmo:
     Tempo Mín/Máx     menor/maior tempo (ms)
 
 Linhas ordenadas por ARPD; o melhor valor (menor) de cada coluna fica em
-negrito (exceto Gap Min, como no exemplo).
+negrito.
 """
 
 import argparse
@@ -28,12 +28,12 @@ INSTANCE_RE = re.compile(r"^(?P<group>J\d+M\d+)N\d+$")
 
 COLUMNS = [
     # (cabeçalho, chave, negritar o menor?, casas decimais)
-    ("ARPD (\\%)", "arpd", True, 2),
-    ("Gap Min (\\%)", "gmin", False, 2),
-    ("Gap Máx (\\%)", "gmax", True, 2),
-    ("Desv. Padrão (\\%)", "std", True, 2),
-    ("Tempo Mín (ms)", "tmin", True, 4),
-    ("Tempo Máx (ms)", "tmax", True, 2),
+    ("ARPD médio (\\%)", "arpd", True, 3),
+    ("ARPD Min (\\%)", "gmin", True, 3),
+    ("ARPD Máx (\\%)", "gmax", True, 3),
+    ("Desv. Padrão (\\%)", "std", True, 3),
+    ("Tempo Mín (ms)", "tmin", True, 3),
+    ("Tempo Máx (ms)", "tmax", True, 3),
 ]
 
 
