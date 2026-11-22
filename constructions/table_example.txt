@@ -1,0 +1,23 @@
+\begin{table}[htbp]
+\centering
+\caption{Resumo do desempenho global das heurísticas construtivas no BFSP.}
+\label{tab:resumo_construtivos}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Algoritmo} & \textbf{ARPD (\%)} & \textbf{Gap Min (\%)} & \textbf{Gap Máx (\%)} & \textbf{Desv. Padrão (\%)} & \textbf{Tempo Médio (ms)} & \textbf{Tempo Máx (ms)} \\
+\midrule
+PFT\_NEH   & \textbf{5,52} & -0,32 & \textbf{9,73} & 2,11 & 57,47 & 425,43 \\
+PF\_NEH    & 5,54 & -0,46 & 9,93 & 2,16 & 57,47 & 425,17 \\
+mNEH       & 5,63 & 1,89  & 10,89 & \textbf{1,78} & 1,30  & 8,04   \\
+NEH        & 6,40 & 2,17  & 10,68 & 1,89 & 1,24  & 7,71   \\
+GRASP\_NEH & 7,55 & 2,43  & 22,60 & 4,40 & 3,63  & 21,84  \\
+PFT        & 7,91 & -0,82 & 22,93 & 5,28 & 57,76 & 426,33 \\
+PW         & 7,99 & -0,87 & 20,72 & 5,19 & 4,45  & 29,28  \\
+PF         & 8,52 & -0,75 & 23,88 & 5,55 & 57,68 & 426,09 \\
+MinMax     & 12,99 & 7,23 & 24,53 & 3,52 & 2,64  & 19,12  \\
+LPT        & 22,06 & 12,87 & 31,97 & 4,41 & \textbf{0,05} & \textbf{0,18} \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
