@@ -1,4 +1,4 @@
-# Planilha: output_local_searchs.xlsx
+# Planilha: local_searchs_results.xlsx
 
 Abas: Resumo, rls, rls-de-abc, mrls-p-eda, best-swap-ig, swap-first-ig, vnd1, vnd2, ig-ij-dispatch, svns-s-swap, svns-s-insertion, svns-d-swap, svns-d-insertion, hvns-best-insertion, hvns-best-edge-insertion, hvns-best-swap, hvns-shaking, hvns-sa-rls, hvns-sa-edge-insertion, tpa-sa
 

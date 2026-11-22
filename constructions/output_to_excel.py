@@ -151,8 +151,8 @@ def main():
                         help="diretório com os results/*.txt (default: ./results)")
     parser.add_argument("--best", default=os.path.join(os.path.dirname(script_dir), "best_ribas.json"),
                         help="JSON com os melhores valores conhecidos (default: ../best_ribas.json)")
-    parser.add_argument("--output", default=os.path.join(script_dir, "output.xlsx"),
-                        help="xlsx a gravar (default: ./output.xlsx)")
+    parser.add_argument("--output", default=os.path.join(script_dir, "construtions_results.xlsx"),
+                        help="xlsx a gravar (default: ./construtions_results.xlsx)")
     args = parser.parse_args()
 
     results = parse_results_dir(args.results)

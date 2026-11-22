@@ -34,35 +34,6 @@ void config_argparse(argparse::ArgumentParser &cli) {
         .metavar("VERBOSE")
         .default_value(false)
         .flag();
-
-    cli.add_argument("--lambda")
-        .help("PF_NEH/PFT_NEH split point; defaults to (n > 200 ? 20 : n)")
-        .metavar("LAMBDA")
-        .scan<'i', size_t>();
-
-    cli.add_argument("--minmax-alpha")
-        .help("MinMax alpha parameter (Ronconi, https://doi.org/10.1016/S0925-5273(03)00065-3)")
-        .metavar("ALPHA")
-        .default_value(0.60)
-        .scan<'f', double>();
-
-    cli.add_argument("--mneh-alpha")
-        .help("mNEH alpha parameter")
-        .metavar("ALPHA")
-        .default_value(0.8)
-        .scan<'f', double>();
-
-    cli.add_argument("--beta")
-        .help("GRASP_NEH RCL threshold parameter")
-        .metavar("BETA")
-        .default_value(5e-4)
-        .scan<'f', double>();
-
-    cli.add_argument("--delta")
-        .help("GRASP_NEH split point between the GRASP phase and the NEH phase")
-        .metavar("DELTA")
-        .default_value(size_t(20))
-        .scan<'i', size_t>();
 }
 } // namespace
 
@@ -86,9 +57,4 @@ Parameters::Parameters(int argc, char **argv) {
     m_iters = cli.get<size_t>("--iters");
     m_verbose = cli.get<bool>("--verbose");
     m_seed = cli.present<size_t>("--seed");
-    m_lambda = cli.present<size_t>("--lambda");
-    m_minmax_alpha = cli.get<double>("--minmax-alpha");
-    m_mneh_alpha = cli.get<double>("--mneh-alpha");
-    m_beta = cli.get<double>("--beta");
-    m_delta = cli.get<size_t>("--delta");
 }

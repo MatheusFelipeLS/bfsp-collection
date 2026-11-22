@@ -32,9 +32,9 @@ from openpyxl.utils import get_column_letter
 # Arquivos .xlsx/.xlsm e/ou pastas (todas as planilhas da pasta serao convertidas).
 # Dica: use o prefixo r"..." para caminhos do Windows (evita problemas com "\").
 ENTRADAS = [
-    r"/home/matheus/Documents/bfsp-collection/constructions/output.xlsx",
-    r"/home/matheus/Documents/bfsp-collection/local-searchs-3/output_local_searchs.xlsx",
-    r"/home/matheus/output-speedups-server.xlsx"
+    r"/home/matheus/Documents/bfsp-collection/constructions/constructions_results.xlsx", # constructions
+    r"/home/matheus/Documents/bfsp-collection/speed-ups/speed_ups_results.xlsx", # speed ups
+    r"/home/matheus/Documents/bfsp-collection/local-searchs-3/local_searchs_results.xlsx", #local searchs
 ]
 
 # Pasta onde os arquivos convertidos serao salvos.

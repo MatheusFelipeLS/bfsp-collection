@@ -250,8 +250,8 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parser.add_argument("results", nargs="?", default=os.path.join(script_dir, "results"),
                         help="diretório com os results/*.csv (default: ./results)")
-    parser.add_argument("--output", default=os.path.join(script_dir, "output.xlsx"),
-                        help="xlsx a gravar (default: ./output.xlsx)")
+    parser.add_argument("--output", default=os.path.join(script_dir, "local_searchs_results.xlsx"),
+                        help="xlsx a gravar (default: ./local_searchs_results.xlsx)")
     parser.add_argument("--literature", default=os.path.join(script_dir, "..", "best_ribas.json"),
                         help="JSON com os melhores custos conhecidos (Taillard/Ribas), usado como referência do "
                              "RPD quando disponível (default: ../best_ribas.json)")

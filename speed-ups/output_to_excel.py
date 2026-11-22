@@ -173,8 +173,8 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     parser.add_argument("results", nargs="?", default=os.path.join(script_dir, "results"),
                         help="diretório com os results/*.csv (default: ./results)")
-    parser.add_argument("--output", default=os.path.join(script_dir, "output.xlsx"),
-                        help="xlsx a gravar (default: ./output.xlsx)")
+    parser.add_argument("--output", default=os.path.join(script_dir, "speed_ups_results.xlsx"),
+                        help="xlsx a gravar (default: ./speed_ups_results.xlsx)")
     args = parser.parse_args()
 
     results = discover_results(args.results)
