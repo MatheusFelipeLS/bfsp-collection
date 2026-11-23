@@ -28,6 +28,8 @@ BINARY = os.path.join("build", "constructions")
 INSTANCES_DIR = "instances"
 
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N(\d+)$")
+# Grupos (jobs, máquinas) ignorados.
+EXCLUDED_GROUPS = {(200, 5), (500, 5), (500, 10)}
 RESULT_RE = re.compile(r"^\w+,\d+,[0-9.eE+-]+$")
 
 
@@ -55,6 +57,8 @@ def discover_instances():
             if not m:
                 continue
             jobs, machines, number = (int(x) for x in m.groups())
+            if (jobs, machines) in EXCLUDED_GROUPS:
+                continue
             found.append(((jobs, machines, number), os.path.join(group_dir, name)))
     found.sort(key=lambda item: item[0])
     return [path for _, path in found]

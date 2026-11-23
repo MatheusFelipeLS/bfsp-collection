@@ -33,6 +33,8 @@ BINARY = os.path.join("build", "local-searchs-3")
 INSTANCES_DIR = "instances"
 
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N(\d+)$")
+# Grupos (jobs, máquinas) ignorados.
+EXCLUDED_GROUPS = {(200, 5), (500, 5), (500, 10)}
 
 SUMMARY_COLUMNS = [
     "record", "localsearch", "n", "m", "iteration", "iters", "seed", "initial_cost", "final_best_cost", "n_calls",
@@ -81,6 +83,8 @@ def discover_instances(pick_all):
             if not pick_all and not name.endswith(DEFAULT_PICK):
                 continue
             jobs, machines, number = (int(x) for x in m.groups())
+            if (jobs, machines) in EXCLUDED_GROUPS:
+                continue
             found.append(((jobs, machines, number), os.path.join(group_dir, name)))
     found.sort(key=lambda item: item[0])
     return [path for _, path in found]

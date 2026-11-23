@@ -215,6 +215,18 @@ std::vector<bench::Result> bench_rls(Instance &instance, const Parameters &param
         out.push_back(r);
     }
 
+    {
+        auto [r, sol, work] = measure("rls-grabowski-blocks", &rls_grabowski_blocks);
+        r.pruned_machines_pct = pruned_machines_pct(work);
+        r.discarded_positions_pct = discarded_positions_pct(work);
+        const bool valid = sol.cost == recompute_cost(sol.sequence, instance) && sol.cost <= start.cost;
+        r.correct = naive_valid && valid;
+        r.note = "start=" + std::to_string(start.cost) + " naive=" + std::to_string(naive_sol.cost) +
+                 " grabowski=" + std::to_string(sol.cost) +
+                 " same_trajectory=" + (sol.sequence == naive_sol.sequence ? "1" : "0");
+        out.push_back(r);
+    }
+
     return out;
 }
 
@@ -397,7 +409,7 @@ BenchFn single(bench::Result (*fn)(Instance &, const Parameters &, const Input &
 const std::vector<Entry> &registry() {
     static const std::vector<Entry> reg = {
         {"taillard-insertion", {"taillard-insertion"}, single(bench_taillard_insertion)},
-        {"rls", {"rls-taillard", "rls-taillard-cutoff", "rls-grabowski"}, bench_rls},
+        {"rls", {"rls-taillard", "rls-taillard-cutoff", "rls-grabowski", "rls-grabowski-blocks"}, bench_rls},
         {"partial-recalc", {"partial-recalc"}, single(bench_partial_recalc)},
         // superseded by the "rls" group (rls_grabowski is now compared against naive::rls):
         // {"grabowski-block", {"grabowski-block"}, single(bench_grabowski_block)},

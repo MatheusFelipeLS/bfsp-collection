@@ -16,6 +16,11 @@ bool rls(Solution &s, const std::vector<size_t> &ref, Instance &instance);
 bool rls_taillard_no_cutoff(Solution &s, const std::vector<size_t> &ref, Instance &instance);
 bool rls_taillard(Solution &s, const std::vector<size_t> &ref, Instance &instance);
 
+// Block restriction only (no Taillard e/q): each allowed position is scored by a
+// forward recompute from the insertion point, with early cut-off and partial
+// recompute after accepted moves.
+bool rls_grabowski_blocks(Solution &s, const std::vector<size_t> &ref, Instance &instance);
+
 bool rls_grabowski(Solution &s, const std::vector<size_t> &ref, Instance &instance);
 
 #endif

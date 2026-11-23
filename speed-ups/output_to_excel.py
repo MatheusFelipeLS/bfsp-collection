@@ -35,6 +35,7 @@ SPEEDUP_ORDER = [
     "rls-taillard",
     "rls-taillard-cutoff",
     "rls-grabowski",
+    "rls-grabowski-blocks",
     "partial-recalc",
     "grabowski-block",
     "edge-insertion",
@@ -111,7 +112,7 @@ def header_for(speedup, rows):
         header.append(PRUNED_HEADER)
     if has(rows, "discarded"):
         header.append(DISCARDED_HEADER)
-    if speedup == "rls-grabowski":
+    if speedup in ("rls-grabowski", "rls-grabowski-blocks"):
         header += GRABOWSKI_COSTS_HEADER
     return header
 
@@ -126,7 +127,7 @@ def sheet_rows_for(speedup, rows):
             line.append(r["pruned"])
         if with_discarded:
             line.append(r["discarded"])
-        if speedup == "rls-grabowski":
+        if speedup in ("rls-grabowski", "rls-grabowski-blocks"):
             m = GRABOWSKI_NOTE_RE.search(r["note"])
             line += [int(x) for x in m.groups()] if m else [None] * 4
         out.append(line)

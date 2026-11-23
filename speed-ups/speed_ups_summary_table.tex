@@ -1,0 +1,16 @@
+\begin{table}[htbp]
+\centering
+\caption{Fatores de aceleração computacional obtidos sobre as instâncias do \textit{benchmark} de Taillard.}
+\label{tab:fatores_aceleracao}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lccc}
+\hline
+\textbf{Procedimento de Aceleração} & \textbf{Fator Médio ($\bar{S}$)} & \textbf{Fator Mínimo} & \textbf{Fator Máximo} \\ \hline
+\texttt{NEH + Taillard} & 76,64 & 6,94 & 295,44 \\
+\texttt{RLS + Taillard} & 31,34 & 4,90 & 141,43 \\
+\texttt{RLS-Taillard-Cutoff} & 31,87 & 4,78 & 155,68 \\
+\texttt{RLS + Restrição de Blocos} & 35,08 & 1,96 & 354,86 \\
+\texttt{Swap + Partial recalculation} & 7,18 & 4,31 & 13,13 \\ \hline
+\end{tabular}
+}
+\end{table}

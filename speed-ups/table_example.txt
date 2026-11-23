@@ -1,0 +1,15 @@
+\begin{table}[htbp]
+\centering
+\caption{Percentual médio de trabalho poupado por classe de dimensão ($n \times m$).}
+\label{tab:escalabilidade_podas}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lcccc}
+\hline
+\textbf{Classe ($n \times m$)} & \multicolumn{2}{c}{\textbf{Máquinas Podadas (\%)}} & \multicolumn{2}{c}{\textbf{\texttt{RLS + Restrição de blocos}}} \\ \cline{2-5}
+ & \texttt{NEH + Taillard} & \texttt{RLS-Taillard-Cutoff} & \textbf{Máquinas Podadas (\%)} & \textbf{Posições Descartadas (\%)} \\ \hline
+$20 \times 5$ & 25,37\% & 49,88\% & 63,64\% & 4,17\% \\
+$100 \times 20$ & 45,02\% & 64,06\% & 79,07\% & 1,05\% \\
+$500 \times 20$ & 61,71\% & 73,74\% & 84,39\% & 0,26\% \\ \hline
+\end{tabular}
+}
+\end{table}

@@ -5,7 +5,9 @@
 #include "Solution.h"
 #include "constructions/NEH.h"
 #include "local-search/Grabowski.h"
+#include "Stats.h"
 
+#include <algorithm>
 #include <vector>
 
 // Referenced Local Search (RIS).
@@ -105,6 +107,119 @@ bool rls_grabowski(Solution &s, const std::vector<size_t> &ref, Instance &instan
         }
 
         s.sequence.insert(s.sequence.begin() + (long)og_index, job);
+
+        cnt++;
+    }
+
+    return improved;
+}
+
+// Block restriction ONLY: no Taillard head/tail matrices.
+//
+// Same search as rls_grabowski (critical-block ranges, strict-improvement
+// acceptance, partial recompute after an accepted move), but every candidate
+// position is scored by a forward recompute of the departure times from the
+// insertion point to the end - O((n-i)*m) per position instead of O(m) - with
+// an early cut-off: departure times on the last machine grow monotonically along
+// the sequence, so a row whose last-machine departure already reaches the best
+// makespan found proves the candidate cannot improve.
+bool rls_grabowski_blocks(Solution &s, const std::vector<size_t> &ref, Instance &instance) {
+    const size_t n = instance.num_jobs();
+    const size_t m = instance.num_machines();
+    auto p = [&instance](size_t i, size_t j) { return instance.p(i, j); };
+
+    // Fills `out` with the departure times of `node` scheduled right after the row `prev`
+    // (nullptr when `node` is first).
+    auto fill_row = [&](const std::vector<size_t> *prev, size_t node, std::vector<size_t> &out) {
+        if (prev == nullptr) {
+            out[0] = p(node, 0);
+            for (size_t j = 1; j < m; j++) {
+                out[j] = out[j - 1] + p(node, j);
+            }
+            return;
+        }
+        const std::vector<size_t> &pr = *prev;
+        out[0] = std::max(pr[0] + p(node, 0), pr[1]);
+        for (size_t j = 1; j + 1 < m; j++) {
+            out[j] = std::max(out[j - 1] + p(node, j), pr[j + 1]);
+        }
+        out[m - 1] = out[m - 2] + p(node, m - 1);
+    };
+
+    // base: departure times of the sequence without the job being moved.
+    // scratch: rows of the candidate being scored.
+    std::vector<std::vector<size_t>> base(n, std::vector<size_t>(m));
+    std::vector<std::vector<size_t>> scratch(n, std::vector<size_t>(m));
+    std::vector<size_t> reduced;
+    reduced.reserve(n);
+
+    bool improved = false;
+    size_t j = 0;
+    size_t cnt = 0;
+    core::recalculate_solution(instance, s); // departure times of the current sequence
+
+    while (cnt < n) {
+        j = (j + 1) % n;
+        const size_t job = ref[j];
+
+        const auto ranges = grabowski_reinsertion(instance, s, job);
+
+        size_t og_index = 0;
+        for (size_t i = 0; i < s.sequence.size(); i++) {
+            if (s.sequence[i] == job) {
+                og_index = i;
+                break;
+            }
+        }
+
+        reduced = s.sequence;
+        reduced.erase(reduced.begin() + (long)og_index);
+
+        // Rows before og_index are unchanged by the removal; recompute the rest.
+        for (size_t r = 0; r < og_index; r++) {
+            base[r] = s.departure_times[r];
+        }
+        for (size_t r = og_index; r + 1 < n; r++) {
+            fill_row(r == 0 ? nullptr : &base[r - 1], reduced[r], base[r]);
+        }
+
+        stats::get().positions_total += n; // n insertion positions (reduced size + 1)
+        size_t best_index = og_index;
+        size_t best_value = s.cost;
+
+        for (const auto &range : ranges) {
+            stats::get().positions_evaluated += range.second - range.first + 1;
+            for (size_t i = range.first; i <= range.second; i++) {
+                // Candidate: reduced[0..i) + job + reduced[i..); rows i..n-1 are recomputed.
+                stats::get().machines_total += (n - i) * m;
+                bool pruned = false;
+                const std::vector<size_t> *prev = (i == 0) ? nullptr : &base[i - 1];
+                for (size_t r = i; r < n; r++) {
+                    const size_t node = (r == i) ? job : reduced[r - 1];
+                    fill_row(prev, node, scratch[r]);
+                    prev = &scratch[r];
+                    stats::get().machines_scanned += m;
+                    if (scratch[r][m - 1] >= best_value) {
+                        pruned = true;
+                        break;
+                    }
+                }
+                if (!pruned) { // reached the last row strictly below best_value
+                    best_value = scratch[n - 1][m - 1];
+                    best_index = i;
+                }
+            }
+        }
+
+        if (best_value < s.cost) {
+            s.sequence = reduced;
+            s.sequence.insert(s.sequence.begin() + (long)best_index, job);
+            cnt = 0;
+            s.cost = best_value;
+            improved = true;
+            core::partial_recalculate_solution(instance, s, std::min(og_index, best_index));
+            continue;
+        }
 
         cnt++;
     }

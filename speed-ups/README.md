@@ -60,6 +60,7 @@ speedup,n,m,iters,naive_ms,accel_ms,factor,pruned_machines_pct,discarded_positio
 | `rls-taillard` | `rls_taillard_no_cutoff` (Taillard `e`/`q`, todas as máquinas) | `naive::rls` (recompute `O(n·m)` por posição) | mesma trajetória: sequência e makespan idênticos |
 | `rls-taillard-cutoff` | `rls_taillard` (Taillard + corte antecipado, `== rls`) | `naive::rls` | mesma trajetória: sequência e makespan idênticos |
 | `rls-grabowski` | `rls_grabowski` (vizinhança restrita ao bloco) | `naive::rls` | ambos terminam em escalonamento válido com custo ≤ inicial |
+| `rls-grabowski-blocks` | `rls_grabowski_blocks` (**só** restrição de bloco + corte por linha + recomputação parcial; **sem** matrizes `e`/`q` de Taillard: cada posição permitida é reavaliada para frente a partir do ponto de inserção, `O((n−i)·m)`) | `naive::rls` | ambos terminam em escalonamento válido com custo ≤ inicial |
 | `partial-recalc` | `swap_local_search_best` (`partial_recalculate_solution` + linha suja) | `naive::swap_neighborhood_best` (recompute total por par) | sequência e makespan idênticos |
 
 As três linhas `rls-*` (grupo `rls`, aceito por `-p rls`) compartilham a mesma solução inicial
@@ -84,7 +85,7 @@ python3 run_all.py                                        # varre instâncias ->
 ```
 
 Nomes aceitos por `-p`: `taillard-insertion`, `rls` (ou `rls-taillard`, `rls-taillard-cutoff`,
-`rls-grabowski`), `partial-recalc`. Opções do binário: `-p/--speedup`, `-n/--iters <k>`,
+`rls-grabowski`, `rls-grabowski-blocks`), `partial-recalc`. Opções do binário: `-p/--speedup`, `-n/--iters <k>`,
 `-s/--seed <s>` (padrão 42), `-v`. Opções do `run_all.py`: `--all` (todas as instâncias, não só
 `*N1`), `--iters`, `--seed`, `--no-build`, `--results-dir`.
 
