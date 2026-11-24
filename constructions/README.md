@@ -15,6 +15,7 @@ avaliadas em um único binário. Faz parte do repositório `bfsp-collection`.
 | `PFT_NEH` | `PFT_NEH.cpp` | PFT + NEH (ponto de corte `--lambda`) |
 | `LPT` | `LPT.cpp` | Ordenação por maior tempo total de processamento |
 | `MinMax` | `MinMax.cpp` | MinMax de Ronconi (parâmetro `--minmax-alpha`) |
+| `MME` | `main.cpp` | MinMax seguido do NEH sobre a sequência resultante (usado pelo DE_ABC; parâmetro `--mme-alpha`) |
 | `mNEH` | `mNEH.cpp` | NEH modificado (parâmetro `--mneh-alpha`) |
 | `PW` | `PW.cpp` | Pan & Wang |
 | `GRASP_NEH` | `GRASP_NEH.cpp` | GRASP + NEH (`--delta`, `--beta`, `--seed`) |
@@ -49,6 +50,7 @@ O build usa `release`, LTO e `-march=native`.
 | `--iter` | `10` | Nº de repetições (para medir tempo) |
 | `--lambda` | `n > 200 ? 200 : n` | Ponto de corte de `PF_NEH`/`PFT_NEH` |
 | `--minmax-alpha` | `0.60` | α do MinMax |
+| `--mme-alpha` | `0.75` | α do MinMax dentro do MME (padrão do DE_ABC) |
 | `--mneh-alpha` | `0.8` | α do mNEH |
 | `--delta` | `20` | Ponto de corte GRASP/NEH do `GRASP_NEH` |
 | `--beta` | `5e-4` | Limiar da RCL do `GRASP_NEH` |

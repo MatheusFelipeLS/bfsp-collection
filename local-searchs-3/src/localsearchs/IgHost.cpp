@@ -352,53 +352,51 @@ std::vector<ig::RunResult> bench_hvns_best_swap(Instance &instance, const Parame
 }
 
 // ---------------------------------------------------------------------------
-// #20/#21/#22/#23 - self-budgeted entries (see README.md "Entradas
-// auto-orçadas"): each IG call gives them a short `--slot-time-limit-ms`
-// burst instead of a full pass. hvns-sa-* carry a persistent cooling
-// temperature `T` across calls within a run (reset each repetition);
-// tpa-sa's signature has no such in/out parameter, so it restarts its own
-// cooling schedule from scratch every call.
+// #20/#21/#22 - HVNS's VND cycle and SA phases. No per-call time budget:
+// each call runs until its origin's own stopping rule (VND: k=3 fails;
+// SA: n consecutive rejections). hvns-sa-* carry a persistent cooling
+// temperature `T` across calls within a run (reset each repetition), as
+// HVNS's `m_T` does (see README.md "Entradas HVNS").
+//
+// #23 - tpa-sa (currently out of the registry): TPA's SA is the whole
+// metaheuristic, not a local search, so it has no natural per-call stop and
+// still takes a `--slot-time-limit-ms` burst; its signature has no
+// persistent T, so it restarts its cooling schedule from scratch every call.
 // ---------------------------------------------------------------------------
 std::vector<ig::RunResult> bench_hvns_shaking(Instance &instance, const Parameters &params, size_t seed,
                                               std::vector<ig::TrajectoryBlock> &trajectories) {
-    const double slot_ms = params.slot_time_limit_ms();
-    StepFn step = [slot_ms](Solution &s, Instance &i, std::vector<size_t> &) { hvns_shaking(s, i, slot_ms); };
-    return run_entry("hvns-shaking", instance, params, seed, noop_setup, step,
-                     "per-call burst of " + std::to_string(slot_ms) + "ms", trajectories);
+    StepFn step = [](Solution &s, Instance &i, std::vector<size_t> &) { hvns_shaking(s, i); };
+    return run_entry("hvns-shaking", instance, params, seed, noop_setup, step, "", trajectories);
 }
 
 std::vector<ig::RunResult> bench_hvns_sa_rls(Instance &instance, const Parameters &params, size_t seed,
                                              std::vector<ig::TrajectoryBlock> &trajectories) {
     const HvnsSaParams sa = hvns_compute_sa_params(instance, params.hvns_n_iter());
-    const double slot_ms = params.slot_time_limit_ms();
     double T = sa.t_init;
     auto setup = [&] { T = sa.t_init; };
     StepFn step = [&](Solution &s, Instance &i, std::vector<size_t> &) {
         Solution local_current = s;
         Solution local_best = s;
-        hvns_sa_rls(local_current, local_best, i, T, sa.beta, slot_ms);
+        hvns_sa_rls(local_current, local_best, i, T, sa.beta);
         s = local_best;
     };
     return run_entry("hvns-sa-rls", instance, params, seed, setup, step,
-                     "per-call burst of " + std::to_string(slot_ms) + "ms; T cools across calls within a run",
-                     trajectories);
+                     "T cools across calls within a run", trajectories);
 }
 
 std::vector<ig::RunResult> bench_hvns_sa_edge_insertion(Instance &instance, const Parameters &params, size_t seed,
                                                          std::vector<ig::TrajectoryBlock> &trajectories) {
     const HvnsSaParams sa = hvns_compute_sa_params(instance, params.hvns_n_iter());
-    const double slot_ms = params.slot_time_limit_ms();
     double T = sa.t_init;
     auto setup = [&] { T = sa.t_init; };
     StepFn step = [&](Solution &s, Instance &i, std::vector<size_t> &) {
         Solution local_current = s;
         Solution local_best = s;
-        hvns_sa_best_edge_insertion(local_current, local_best, i, T, sa.beta, slot_ms);
+        hvns_sa_best_edge_insertion(local_current, local_best, i, T, sa.beta);
         s = local_best;
     };
     return run_entry("hvns-sa-edge-insertion", instance, params, seed, setup, step,
-                     "per-call burst of " + std::to_string(slot_ms) + "ms; T cools across calls within a run",
-                     trajectories);
+                     "T cools across calls within a run", trajectories);
 }
 
 std::vector<ig::RunResult> bench_tpa_sa(Instance &instance, const Parameters &params, size_t seed,
@@ -430,16 +428,16 @@ const std::vector<std::pair<std::string, BenchFn>> &registry() {
         {"vnd2", bench_vnd2_fixed},
         {"ig-ij-dispatch", bench_ig_ij_dispatch},
         {"svns-s-swap", bench_svns_s_swap},
-        {"svns-s-insertion", bench_svns_s_insertion},
-        {"svns-d-swap", bench_svns_d_swap},
-        {"svns-d-insertion", bench_svns_d_insertion},
+        // {"svns-s-insertion", bench_svns_s_insertion},
+        // {"svns-d-swap", bench_svns_d_swap},
+        // {"svns-d-insertion", bench_svns_d_insertion},
         {"hvns-best-insertion", bench_hvns_best_insertion},
         {"hvns-best-edge-insertion", bench_hvns_best_edge_insertion},
-        {"hvns-best-swap", bench_hvns_best_swap},
+        // {"hvns-best-swap", bench_hvns_best_swap},
         {"hvns-shaking", bench_hvns_shaking},
         {"hvns-sa-rls", bench_hvns_sa_rls},
         {"hvns-sa-edge-insertion", bench_hvns_sa_edge_insertion},
-        {"tpa-sa", bench_tpa_sa},
+        // {"tpa-sa", bench_tpa_sa},
     };
     return reg;
 }

@@ -20,8 +20,8 @@
 
 namespace {
 
-constexpr std::array<const char *, 10> ALGORITHMS = {"NEH",  "PF",     "PF_NEH", "PFT", "PFT_NEH",
-                                                      "LPT",  "MinMax", "mNEH",   "PW",  "GRASP_NEH"};
+constexpr std::array<const char *, 11> ALGORITHMS = {"NEH", "PF",     "PF_NEH", "PFT",  "PFT_NEH",  "LPT",
+                                                      "MinMax", "MME", "mNEH",   "PW",  "GRASP_NEH"};
 
 void print_solution(const std::string &algorithm, const Solution &s, double elapsed_ms, bool verbose) {
     std::cout << s.cost << ',' << elapsed_ms << '\n';
@@ -69,6 +69,11 @@ bool run_algorithm(const std::string &alg, Instance &instance, const Parameters 
         } else if (alg == "MinMax") {
             MinMax mm(instance, params.minmax_alpha());
             solution = mm.solve();
+        } else if (alg == "MME") {
+            // MinMax + NEH (MME), as used by DE_ABC for its first solution
+            MinMax mm(instance, params.mme_alpha());
+            NEH neh(instance);
+            solution = neh.solve(mm.solve().sequence);
         } else if (alg == "mNEH") {
             solution = MNEH::solve(params.mneh_alpha(), instance);
         } else if (alg == "PW") {
@@ -104,7 +109,7 @@ int main(int argc, char *argv[]) {
     if (auto alg = params.algorithm()) {
         if (!run_algorithm(*alg, instance, params)) {
             std::cerr << "unknown algorithm: " << *alg << '\n';
-            std::cerr << "available: NEH, PF, PF_NEH, PFT, PFT_NEH, LPT, MinMax, mNEH, PW, GRASP_NEH\n";
+            std::cerr << "available: NEH, PF, PF_NEH, PFT, PFT_NEH, LPT, MinMax, MME, mNEH, PW, GRASP_NEH\n";
             return EXIT_FAILURE;
         }
         return EXIT_SUCCESS;

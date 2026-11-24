@@ -82,10 +82,10 @@ correspondente apagado:
 | 13 | `hvns-best-insertion` | `HVNS/src/HVNS.cpp:268-303` | Inserção de 1 job, melhor-melhoria | HVNS |
 | 14 | `hvns-best-edge-insertion` | `HVNS/src/HVNS.cpp:305-341` | Inserção de bloco de 2 jobs, melhor-melhoria | HVNS |
 | 15 | `hvns-best-swap` | `HVNS/src/HVNS.cpp:343-377` | Troca melhor-melhoria, recálculo parcial | HVNS |
-| 16 | `hvns-shaking` | `HVNS/src/HVNS.cpp:379-397` | Ciclo de restart VNS k=1..3 sobre {#13,#14,#15} — **auto-orçada**, ver abaixo | HVNS |
-| 17 | `hvns-sa-rls` | `HVNS/src/HVNS.cpp:399-435` | RLS com aceitação Metropolis + resfriamento geométrico — **auto-orçada** | HVNS |
-| 18 | `hvns-sa-edge-insertion` | `HVNS/src/HVNS.cpp:437-482` | Mesma aceitação SA, inserção de bloco — **auto-orçada** | HVNS |
-| 19 | `tpa-sa` | `TPA/src/SimulatedAnnealing.cpp:123-136` | Remoção+reinserção via NEH, aceitação SA — **auto-orçada** | TPA |
+| 16 | `hvns-shaking` | `HVNS/src/HVNS.cpp:379-397` | Ciclo de restart VNS k=1..3 sobre {#13,#14,#15}, converge sozinho — ver "Entradas HVNS" | HVNS |
+| 17 | `hvns-sa-rls` | `HVNS/src/HVNS.cpp:399-435` | RLS com aceitação Metropolis + resfriamento geométrico, para após n rejeições seguidas | HVNS |
+| 18 | `hvns-sa-edge-insertion` | `HVNS/src/HVNS.cpp:437-482` | Mesma aceitação SA, inserção de bloco | HVNS |
+| 19 | `tpa-sa` | `TPA/src/SimulatedAnnealing.cpp:123-136` | Remoção+reinserção via NEH, aceitação SA — **fora do registry**, ver "`tpa-sa`" | TPA |
 
 Deduplicação, bugs conhecidos (o no-op de `BestSwap`, o `getchar()` órfão do
 `IG_VND1` original, etc.) e a justificativa de exclusão da variante de RLS do
@@ -137,32 +137,40 @@ durante a rodada: `svns-s-*` começa embaralhada (`random_perm`), `svns-d-*`
 começa em ordem (`iota`), replicando o setup que `local-searchs-fair/` já
 usava para essas duas famílias.
 
-### Entradas auto-orçadas
+### Entradas HVNS (`hvns-shaking`, `hvns-sa-rls`, `hvns-sa-edge-insertion`)
 
-`hvns-shaking`, `hvns-sa-rls`, `hvns-sa-edge-insertion` e `tpa-sa` já são,
-elas mesmas, pequenas metaheurísticas com laço próprio de "rodar até acabar
-o tempo". Plugadas sem ajuste no slot do IG_IJ, a primeira chamada consumiria
-sozinha o orçamento inteiro do IG, e o IG nunca chamaria a busca local uma
-segunda vez — inviabilizando qualquer medida de convergência ao longo de
-várias chamadas. Por isso essas quatro recebem, a cada chamada, apenas um
-**burst curto** (`--slot-time-limit-ms`, default 20ms) em vez do orçamento
-inteiro:
+Rodam **sem orçamento de tempo por chamada**: cada chamada vai até o
+critério de parada natural da origem, como as outras entradas.
 
-- `hvns-shaking`/`tpa-sa`: cada chamada é independente, sem estado
-  persistente entre chamadas (a assinatura de `tpa_anneal_sa` não expõe uma
-  temperatura de entrada/saída) — `tpa-sa` reinicia seu próprio cronograma de
-  resfriamento do zero em toda chamada, uma limitação conhecida desta
-  assinatura, não deste harness.
-- `hvns-sa-rls`/`hvns-sa-edge-insertion`: a temperatura `T` É persistida
-  entre chamadas dentro de uma mesma rodada (resetada a cada repetição), já
-  que a assinatura das funções aceita `T` por referência — então o
-  resfriamento continua de onde parou a cada nova chamada do IG, em vez de
-  reiniciar.
+- `hvns-shaking`: VND sobre {#13, #14, #15} (k=1..3, volta a k=1 quando
+  melhora). Termina sozinho, já que cada reinício reduz o custo
+  estritamente. Observação: no HVNS original, `shaking(s, k)` aplica **uma**
+  vizinhança por chamada (o laço de k fica em `solve()`); aqui ela virou o
+  ciclo completo. Em instâncias grandes cada chamada é cara (o `best_swap`
+  é O(n³m)), então `n_calls` fica baixo.
+- `hvns-sa-rls`/`hvns-sa-edge-insertion`: param depois de n tentativas
+  rejeitadas seguidas (`cnt < n`), igual a `HVNS.cpp:399-482`. A temperatura
+  `T` é persistida entre chamadas dentro de uma rodada (resetada a cada
+  repetição), como o `m_T` do HVNS, então o resfriamento continua de uma
+  chamada do IG para a próxima. Devolvem o melhor visitado (`best`), não o
+  `current` final.
 
-Isso significa que, para essas quatro entradas, "uma chamada da busca local"
-não é "um passe até convergência" como nas outras 15 — é "uma rajada de
-`--slot-time-limit-ms`". Documentado aqui para não confundir `n_calls`/
-`avg_improvement_per_call` dessas quatro com as demais sem o contexto.
+Antes essas três recebiam um burst de `--slot-time-limit-ms` (20 ms). Ele
+foi removido: no original nenhuma delas tem orçamento de tempo, e o valor
+fixo não escalava com a instância (cortava as SA antes da convergência em
+J500 e não era respeitado pelo `hvns-shaking`, que só checava o prazo entre
+vizinhanças). **Os resultados em `results/` gerados antes dessa mudança não
+são comparáveis para estas três entradas.**
+
+### `tpa-sa` (fora do registry)
+
+O SA do TPA não é uma busca local: no TPA ele é a própria metaheurística
+(MNEH + SA), com o orçamento de tempo inteiro e resfriamento calibrado para
+`n_iter` = 1,8M passos. Como não tem parada natural por chamada, plugado no
+IG ele precisa de um burst de `--slot-time-limit-ms`, e com esse burst nunca
+chega a esfriar (além de reiniciar `T` em toda chamada). Por isso a linha
+está comentada no `registry()`. O código continua lá, e o
+`--slot-time-limit-ms` só tem efeito sobre ele.
 
 ## Orçamento de tempo: `10 · n · m` ms
 
@@ -238,8 +246,8 @@ Opções do binário: `-p/--local-search <nome>`, `-n/--iters <k>` (padrão
 `--hvns-n-iter`, `--tpa-n-iter`, `--tpa-final-temp`, `-dS/--destroy` (padrão
 8, tamanho de destruição do IG), `-tP/--temperature` (padrão 0.5, fator de
 temperatura do critério de aceitação), `--time-limit-ms` (**ignorado**, ver
-"Orçamento de tempo"), `--slot-time-limit-ms` (padrão 20, orçamento por
-chamada das 4 entradas auto-orçadas), `--trajectory-max-rows` (padrão 2000),
+"Orçamento de tempo"), `--slot-time-limit-ms` (padrão 20, burst por
+chamada do `tpa-sa`, que está fora do registry), `--trajectory-max-rows` (padrão 2000),
 `--no-trajectory`.
 Opções do `run_all.py`: `--all` (sem ele, só as instâncias `*N1`),
 `--iters` (padrão 10), `--seed`, `--no-build`, `--results-dir`,

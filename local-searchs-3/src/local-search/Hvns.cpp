@@ -1,20 +1,12 @@
 #include "local-search/Hvns.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <numeric>
 
 #include "RNG.h"
 #include "local-search/EdgeInsertion.h"
 #include "local-search/Swap.h"
-
-namespace {
-bool deadline_hit(const std::chrono::steady_clock::time_point &start, double time_limit_ms) {
-    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count() >
-           time_limit_ms;
-}
-} // namespace
 
 HvnsSaParams hvns_compute_sa_params(Instance &instance, size_t n_iter) {
     // Ported from HVNS::HVNS() (HVNS/src/HVNS.cpp:25-35).
@@ -26,15 +18,14 @@ HvnsSaParams hvns_compute_sa_params(Instance &instance, size_t n_iter) {
     return p;
 }
 
-void hvns_shaking(Solution &s, Instance &instance, double time_limit_ms) {
-    const auto start = std::chrono::steady_clock::now();
+void hvns_shaking(Solution &s, Instance &instance) {
     EdgeInsertion ei(instance);
 
     Solution best = s;
     size_t k = 1;
     constexpr size_t KMAX = 3;
 
-    while (k <= KMAX && !deadline_hit(start, time_limit_ms)) {
+    while (k <= KMAX) {
         Solution copy = best;
         switch (k) {
         case 1:
@@ -61,15 +52,9 @@ void hvns_shaking(Solution &s, Instance &instance, double time_limit_ms) {
     s = best;
 }
 
-// Ported verbatim from HVNS::sa_rls (HVNS/src/HVNS.cpp:399-435), plus a
-// deadline: the origin's `cnt < n` loop only terminates once n consecutive
-// trials are rejected, and `beta` is calibrated for a run of `--hvns-n-iter`
-// steps (default 1.8M) shared across many outer VNS iterations - called
-// standalone on a large instance it can stay in high-acceptance territory for
-// a very long time before T cools enough. --time-limit-ms caps that.
-void hvns_sa_rls(Solution &current, Solution &best, Instance &instance, double &T, double beta,
-                 double time_limit_ms) {
-    const auto start = std::chrono::steady_clock::now();
+// Ported verbatim from HVNS::sa_rls (HVNS/src/HVNS.cpp:399-435). Natural
+// stopping rule only, as in the origin: n consecutive rejected trials.
+void hvns_sa_rls(Solution &current, Solution &best, Instance &instance, double &T, double beta) {
     EdgeInsertion ei(instance);
 
     std::vector<size_t> ref(instance.num_jobs());
@@ -77,7 +62,7 @@ void hvns_sa_rls(Solution &current, Solution &best, Instance &instance, double &
     std::shuffle(ref.begin(), ref.end(), RNG::instance().gen());
 
     size_t cnt = 0;
-    while (cnt < instance.num_jobs() && !deadline_hit(start, time_limit_ms)) {
+    while (cnt < instance.num_jobs()) {
         const size_t job = ref[cnt];
         size_t i = 0;
         for (i = 0; i < current.sequence.size(); i++) {
@@ -111,10 +96,8 @@ void hvns_sa_rls(Solution &current, Solution &best, Instance &instance, double &
 }
 
 // Ported verbatim from HVNS::sa_best_edge_insertion (HVNS/src/HVNS.cpp:437-482),
-// plus the same --time-limit-ms deadline as hvns_sa_rls above.
-void hvns_sa_best_edge_insertion(Solution &current, Solution &best, Instance &instance, double &T, double beta,
-                                 double time_limit_ms) {
-    const auto start = std::chrono::steady_clock::now();
+// with the same natural stopping rule as hvns_sa_rls above.
+void hvns_sa_best_edge_insertion(Solution &current, Solution &best, Instance &instance, double &T, double beta) {
     EdgeInsertion ei(instance);
 
     std::vector<size_t> ref(instance.num_jobs());
@@ -122,7 +105,7 @@ void hvns_sa_best_edge_insertion(Solution &current, Solution &best, Instance &in
     std::shuffle(ref.begin(), ref.end(), RNG::instance().gen());
 
     size_t cnt = 0;
-    while (cnt < instance.num_jobs() && !deadline_hit(start, time_limit_ms)) {
+    while (cnt < instance.num_jobs()) {
         std::pair<size_t, size_t> jobs;
         jobs.first = ref[cnt];
 

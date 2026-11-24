@@ -16,6 +16,7 @@ class Parameters {
     std::optional<size_t> seed() const { return m_seed; }
     std::optional<size_t> lambda() const { return m_lambda; }
     double minmax_alpha() const { return m_minmax_alpha; }
+    double mme_alpha() const { return m_mme_alpha; }
     double mneh_alpha() const { return m_mneh_alpha; }
     double beta() const { return m_beta; }
     size_t delta() const { return m_delta; }
@@ -31,6 +32,7 @@ class Parameters {
                                     // https://doi.org/10.1109/TASE.2012.2219860)
     double m_minmax_alpha = 0.60;  // MinMax default (Ronconi, https://doi.org/10.1016/S0925-5273(03)00065-3),
                                     // used as-is by IG/src/IG.cpp; DE_ABC retunes it to 0.75 for its own metaheuristic
+    double m_mme_alpha = 0.75;     // MME (MinMax + NEH) alpha, DE_ABC/include/Parameters.h (theta)
     double m_mneh_alpha = 0.8;     // mNEH default, only reference found is TPA/include/Parameters.h
     double m_beta = 5e-4;          // GRASP_NEH RCL threshold, only reference found is DE_PLS/include/Parameters.h
     size_t m_delta = 20;           // GRASP_NEH split point between the GRASP phase and the NEH phase, same source

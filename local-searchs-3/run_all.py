@@ -142,7 +142,7 @@ def main():
                         help="orçamento de tempo do loop IG inteiro, compartilhado por TODA entrada (default: 2000ms)")
     parser.add_argument("--slot-time-limit-ms", type=float, default=None,
                         help="repassado ao binário --slot-time-limit-ms (default do binário: 20ms) - orçamento por "
-                             "CHAMADA das entradas auto-orçadas (hvns-shaking, hvns-sa-*, tpa-sa)")
+                             "CHAMADA do tpa-sa (fora do registry)")
     parser.add_argument("--no-trajectory", action="store_true",
                         help="não grava trajectories/ (sweep mais rápido e leve)")
     parser.add_argument("--trajectory-max-rows", type=int, default=None,

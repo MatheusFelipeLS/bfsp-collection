@@ -33,11 +33,9 @@ class Parameters {
     // with local-searchs-fair's --time-limit-ms.
     double time_limit_ms() const { return m_time_limit_ms; }
 
-    // Per-call budget for the local searches that are themselves
-    // self-budgeted mini-metaheuristics (hvns-shaking, hvns-sa-*, tpa-sa) -
-    // without this they would consume the ENTIRE time_limit_ms on their
-    // first call, defeating the point of measuring convergence over many IG
-    // calls. See README.md "Entradas auto-orçadas".
+    // Per-call wall-clock burst for tpa-sa only (currently out of the
+    // registry): TPA's SA has no natural per-call stop. The HVNS entries
+    // run to their own stopping rule and ignore this. See README.md "tpa-sa".
     double slot_time_limit_ms() const { return m_slot_time_limit_ms; }
 
     // Trajectory logging (one row per IG call, cost before/after the local
