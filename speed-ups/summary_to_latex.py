@@ -12,11 +12,12 @@ import re
 import sys
 
 ROWS = [  # (arquivo em results/, rótulo na tabela)
-    ("taillard-insertion", "NEH + Taillard"),
-    ("rls-taillard", "RLS + Taillard"),
+    ("taillard-insertion", "NEH-Taillard"),
+    ("rls-taillard", "RLS-Taillard"),
     ("rls-taillard-cutoff", "RLS-Taillard-Cutoff"),
-    ("rls-grabowski", "RLS + Restrição de Blocos"),
-    ("partial-recalc", "Swap + Partial recalculation"),
+    ("rls-grabowski-blocks", "RLS-Grabowski"),
+    ("rls-grabowski", "RLS-Taillard-Grabowski"),
+    ("partial-recalc", "Swap-Partial"),
 ]
 EXCLUDED = {(200, 5), (500, 5), (500, 10)}  # classes (n, m) ignoradas
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N\d+$")

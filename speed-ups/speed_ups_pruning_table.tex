@@ -1,15 +1,15 @@
 \begin{table}[htbp]
 \centering
-\caption{Percentual médio de trabalho poupado por classe de dimensão ($n \times m$).}
-\label{tab:escalabilidade_podas}
+\caption{Métricas de trabalho computacional poupado pelas técnicas de poda e restrição de espaço de busca.}
+\label{tab:podas_descartes}
 \resizebox{\textwidth}{!}{
-\begin{tabular}{lcccc}
+\begin{tabular}{lcc}
 \hline
-\textbf{Classe ($n \times m$)} & \multicolumn{2}{c}{\textbf{Máquinas Podadas (\%)}} & \multicolumn{2}{c}{\textbf{\texttt{RLS + Restrição de blocos}}} \\ \cline{2-5}
- & \texttt{NEH + Taillard} & \texttt{RLS-Taillard-Cutoff} & \textbf{Máquinas Podadas (\%)} & \textbf{Posições Descartadas (\%)} \\ \hline
-$20 \times 5$ & 25,37\% & 49,88\% & 63,64\% & 4,17\% \\
-$100 \times 20$ & 45,02\% & 64,06\% & 79,07\% & 1,05\% \\
-$500 \times 20$ & 61,71\% & 73,74\% & 84,39\% & 0,26\% \\ \hline
+\textbf{Procedimento de Aceleração} & \textbf{Máquinas Podadas (Média \%)} & \textbf{Posições Descartadas (Média \%)} \\ \hline
+\texttt{NEH-Taillard} & 42,06\% & -- \\
+\texttt{RLS-Taillard-Cutoff} & 58,32\% & -- \\
+\texttt{RLS-Grabowski} & 4,54\% & 2,01\% \\
+\texttt{RLS-Taillard-Grabowski} & 70,92\% & 2,01\% \\ \hline
 \end{tabular}
 }
 \end{table}

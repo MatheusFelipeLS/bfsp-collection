@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Gera a tabela LaTeX de trabalho poupado por classe (n x m), no formato de
-table_example.txt: máquinas podadas (NEH + Taillard, RLS-Taillard-Cutoff,
-RLS + Restrição de blocos) e posições descartadas (RLS + Restrição de blocos).
+table_example.txt: máquinas podadas (NEH-Taillard, RLS-Taillard-Cutoff,
+RLS-Grabowski — sem Taillard — e RLS-Taillard-Grabowski) e posições descartadas pela restrição de blocos (iguais nas duas
+versões, que compartilham as faixas de Grabowski).
 Cada célula é a média das instâncias da classe em results/*.csv; as classes em
 EXCLUDED são ignoradas.
 
@@ -18,6 +19,7 @@ from collections import defaultdict
 COLUMNS = [
     ("taillard-insertion", "pruned_machines_pct"),
     ("rls-taillard-cutoff", "pruned_machines_pct"),
+    ("rls-grabowski-blocks", "pruned_machines_pct"),
     ("rls-grabowski", "pruned_machines_pct"),
     ("rls-grabowski", "discarded_positions_pct"),
 ]
@@ -59,12 +61,13 @@ def main():
         r"\caption{Percentual médio de trabalho poupado por classe de dimensão ($n \times m$).}",
         r"\label{tab:escalabilidade_podas}",
         r"\resizebox{\textwidth}{!}{",
-        r"\begin{tabular}{lcccc}",
+        r"\begin{tabular}{lccccc}",
         r"\hline",
-        r"\textbf{Classe ($n \times m$)} & \multicolumn{2}{c}{\textbf{Máquinas Podadas (\%)}} & "
-        r"\multicolumn{2}{c}{\textbf{\texttt{RLS + Restrição de blocos}}} \\ \cline{2-5}",
-        r" & \texttt{NEH + Taillard} & \texttt{RLS-Taillard-Cutoff} & "
-        r"\textbf{Máquinas Podadas (\%)} & \textbf{Posições Descartadas (\%)} \\ \hline",
+        r"\textbf{Classe ($n \times m$)} & \multicolumn{4}{c}{\textbf{Máquinas Podadas (\%)}} & "
+        r"\textbf{Posições Descartadas (\%)} \\ \cline{2-6}",
+        r" & \texttt{NEH-Taillard} & \texttt{RLS-Taillard-Cutoff} & "
+        r"\texttt{RLS-Grabowski} & \texttt{RLS-Taillard-Grabowski} & "
+        r"\texttt{RLS-Grabowski} / \texttt{RLS-Taillard-Grabowski} \\ \hline",
     ]
     for n, m in classes:
         cells = []

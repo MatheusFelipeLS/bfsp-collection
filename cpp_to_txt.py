@@ -13,10 +13,10 @@ from pathlib import Path
 
 def main():
     # Pasta de onde os .cpp serão lidos
-    pasta = Path(r"/home/matheus/Documents/bfsp-collection/local-searchs-3")
+    pasta = Path(r"/home/matheus/Documents/bfsp-collection/speed-ups")
 
     # Pasta onde os .txt serão salvos (será criada se não existir)
-    pasta_saida = Path(r"/home/matheus/Documents/bfsp-collection/local-searchs-3_txt")
+    pasta_saida = Path(r"/home/matheus/Documents/bfsp-collection/speed-ups_txt")
 
     busca = pasta.rglob("*")
     total = 0

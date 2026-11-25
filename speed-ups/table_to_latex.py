@@ -13,11 +13,12 @@ import sys
 from collections import defaultdict
 
 COLUMNS = [  # (arquivo em results/, rótulo na tabela)
-    ("taillard-insertion", "NEH + Taillard"),
-    ("rls-taillard", "RLS + taillard"),
+    ("taillard-insertion", "NEH-Taillard"),
+    ("rls-taillard", "RLS-Taillard"),
     ("rls-taillard-cutoff", "RLS-Taillard-Cutoff"),
-    ("rls-grabowski", "RLS + Restrição de bloco"),
-    ("partial-recalc", "Swap + Recalculo Parcial"),
+    ("rls-grabowski-blocks", "RLS-Grabowski"),
+    ("rls-grabowski", "RLS-Taillard-Grabowski"),
+    ("partial-recalc", "Swap-Partial"),
 ]
 EXCLUDED = {(200, 5), (500, 5), (500, 10)}  # classes ignoradas na tabela
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N\d+$")
