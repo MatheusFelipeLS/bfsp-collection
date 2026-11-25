@@ -75,8 +75,7 @@ void config_argparse(argparse::ArgumentParser &cli) {
         .scan<'f', double>();
 
     cli.add_argument("--slot-time-limit-ms")
-        .help("per-call budget for the self-budgeted entries (hvns-shaking, hvns-sa-rls, hvns-sa-edge-insertion, "
-              "tpa-sa) - see README.md \"Entradas auto-orçadas\"")
+        .help("per-call wall-clock burst for tpa-sa (out of the registry) - see README.md \"tpa-sa\"")
         .metavar("MS")
         .default_value(20.0)
         .scan<'f', double>();

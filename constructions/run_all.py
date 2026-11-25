@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Espelha ALGORITHMS em src/main.cpp (omitir -a roda todos; aqui rodamos um a um).
-ALGORITHMS = ["NEH", "PF", "PF_NEH", "PFT", "PFT_NEH", "LPT", "MinMax", "mNEH", "PW", "GRASP_NEH"]
+ALGORITHMS = ["NEH", "PF", "PF_NEH", "PFT", "PFT_NEH", "LPT", "MinMax", "MME", "mNEH", "PW", "GRASP_NEH"]
 
 BINARY = os.path.join("build", "constructions")
 INSTANCES_DIR = "instances"

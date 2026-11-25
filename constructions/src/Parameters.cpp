@@ -9,7 +9,7 @@ void config_argparse(argparse::ArgumentParser &cli) {
     cli.add_argument("instance").help("instance path");
 
     cli.add_argument("-a", "--algorithm")
-        .help("construction heuristic to run: NEH, PF, PF_NEH, PFT, PFT_NEH, LPT, MinMax, mNEH, PW, GRASP_NEH "
+        .help("construction heuristic to run: NEH, PF, PF_NEH, PFT, PFT_NEH, LPT, MinMax, MME, mNEH, PW, GRASP_NEH "
               "(omit to run all of them)")
         .metavar("ALGORITHM");
 
@@ -33,6 +33,12 @@ void config_argparse(argparse::ArgumentParser &cli) {
         .help("MinMax alpha parameter (Ronconi, https://doi.org/10.1016/S0925-5273(03)00065-3)")
         .metavar("ALPHA")
         .default_value(0.60)
+        .scan<'f', double>();
+
+    cli.add_argument("--mme-alpha")
+        .help("MME (MinMax + NEH) alpha parameter, DE_ABC default")
+        .metavar("ALPHA")
+        .default_value(0.75)
         .scan<'f', double>();
 
     cli.add_argument("--mneh-alpha")
@@ -81,6 +87,7 @@ Parameters::Parameters(int argc, char **argv) {
     m_seed = cli.present<size_t>("--seed");
     m_lambda = cli.present<size_t>("--lambda");
     m_minmax_alpha = cli.get<double>("--minmax-alpha");
+    m_mme_alpha = cli.get<double>("--mme-alpha");
     m_mneh_alpha = cli.get<double>("--mneh-alpha");
     m_beta = cli.get<double>("--beta");
     m_delta = cli.get<size_t>("--delta");

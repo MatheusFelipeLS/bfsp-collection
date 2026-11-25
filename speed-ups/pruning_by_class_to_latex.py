@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Gera a tabela LaTeX de trabalho poupado por classe (n x m), no formato de
-table_example.txt: máquinas podadas (NEH-Taillard, RLS-Taillard-Cutoff,
-RLS-Grabowski — sem Taillard — e RLS-Taillard-Grabowski) e posições descartadas pela restrição de blocos (iguais nas duas
-versões, que compartilham as faixas de Grabowski).
+table_example.txt: máquinas podadas (NEH-Taillard-Cutoff, RLS-Taillard-Cutoff,
+RLS + Restrição de blocos) e posições descartadas (RLS + Restrição de blocos).
 Cada célula é a média das instâncias da classe em results/*.csv; as classes em
 EXCLUDED são ignoradas.
 
@@ -63,11 +62,10 @@ def main():
         r"\resizebox{\textwidth}{!}{",
         r"\begin{tabular}{lccccc}",
         r"\hline",
-        r"\textbf{Classe ($n \times m$)} & \multicolumn{4}{c}{\textbf{Máquinas Podadas (\%)}} & "
-        r"\textbf{Posições Descartadas (\%)} \\ \cline{2-6}",
-        r" & \texttt{NEH-Taillard} & \texttt{RLS-Taillard-Cutoff} & "
-        r"\texttt{RLS-Grabowski} & \texttt{RLS-Taillard-Grabowski} & "
-        r"\texttt{RLS-Grabowski} / \texttt{RLS-Taillard-Grabowski} \\ \hline",
+        r"\textbf{Classe ($n \times m$)} & \multicolumn{2}{c}{\textbf{Máquinas Podadas (\%)}} & "
+        r"\multicolumn{2}{c}{\textbf{\texttt{RLS + Restrição de blocos}}} \\ \cline{2-5}",
+        r" & \texttt{NEH-Taillard-Cutoff} & \texttt{RLS-Taillard-Cutoff} & "
+        r"\textbf{Máquinas Podadas (\%)} & \textbf{Posições Descartadas (\%)} \\ \hline",
     ]
     for n, m in classes:
         cells = []
