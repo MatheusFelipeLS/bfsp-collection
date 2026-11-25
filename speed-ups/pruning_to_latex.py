@@ -12,7 +12,7 @@ import re
 import sys
 
 ROWS = [  # (arquivo em results/, rótulo na tabela)
-    ("taillard-insertion", "NEH-Taillard"),
+    ("taillard-insertion", "NEH-Taillard-Cutoff"),
     ("rls-taillard-cutoff", "RLS-Taillard-Cutoff"),
     ("rls-grabowski-blocks", "RLS-Grabowski"),
     ("rls-grabowski", "RLS-Taillard-Grabowski"),

@@ -13,7 +13,7 @@ import sys
 from collections import defaultdict
 
 COLUMNS = [  # (arquivo em results/, rótulo na tabela)
-    ("taillard-insertion", "NEH-Taillard"),
+    ("taillard-insertion", "NEH-Taillard-Cutoff"),
     ("rls-taillard", "RLS-Taillard"),
     ("rls-taillard-cutoff", "RLS-Taillard-Cutoff"),
     ("rls-grabowski-blocks", "RLS-Grabowski"),
