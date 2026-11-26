@@ -1,0 +1,3 @@
+[submodule "hyprr"]
+	path = hyprr
+	url = git@github.com:renanabfreire/hyprr.git

@@ -71,6 +71,7 @@ ENTRY_ORDER = [
     "hvns-shaking",
     "hvns-sa-rls",
     "hvns-sa-edge-insertion",
+    "hyprr-vnd",
     "tpa-sa",
 ]
 

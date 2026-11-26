@@ -1,8 +1,8 @@
 # local-searchs-3
 
 Terceira forma de avaliar as buscas locais do catálogo de
-`local-searchs/`/`local-searchs-fair/` (aqui reduzido a **19 entradas**, ver
-"As entradas") — em vez de rodar cada uma isolada
+`local-searchs/`/`local-searchs-fair/` (aqui reduzido a **19 entradas**, mais a
+entrada `hyprr-vnd` acrescentada depois — ver "As entradas") — em vez de rodar cada uma isolada
 (com ou sem orçamento de tempo igual), esta pasta planta cada uma, uma de
 cada vez, **dentro do loop de uma metaheurística real** (o IG_IJ) no lugar do
 passo de busca local que ele já usa, e mede como isso afeta a convergência do
@@ -85,6 +85,7 @@ correspondente apagado:
 | 16 | `hvns-shaking` | `HVNS/src/HVNS.cpp:379-397` | Ciclo de restart VNS k=1..3 sobre {#13,#14,#15}, converge sozinho — ver "Entradas HVNS" | HVNS |
 | 17 | `hvns-sa-rls` | `HVNS/src/HVNS.cpp:399-435` | RLS com aceitação Metropolis + resfriamento geométrico, para após n rejeições seguidas | HVNS |
 | 18 | `hvns-sa-edge-insertion` | `HVNS/src/HVNS.cpp:437-482` | Mesma aceitação SA, inserção de bloco | HVNS |
+| 20 | `hyprr-vnd` | `hyprr/` commit `0cec09d`, `HyPRR/LocalSearch.cpp` (`runSearchTotal`, `relocate`, `twoOpt`, `swap`) — port em `HyprrLS` (cópia de `speed-ups/src/local-search/HyprrLS.cpp`) | VND de primeira melhoria: inserção → inserção em bloco x=2, 3, 4 → troca (sem troca quando n = 500), volta à 1ª vizinhança a cada melhoria; desempate por tempo ocioso+bloqueado; Taillard generalizado + poda pelo caminho crítico (block-skip + LB de Ding na inserção). Ver "`hyprr-vnd`" | HyPRR |
 | 19 | `tpa-sa` | `TPA/src/SimulatedAnnealing.cpp:123-136` | Remoção+reinserção via NEH, aceitação SA — **fora do registry**, ver "`tpa-sa`" | TPA |
 
 Deduplicação, bugs conhecidos (o no-op de `BestSwap`, o `getchar()` órfão do
@@ -161,6 +162,29 @@ fixo não escalava com a instância (cortava as SA antes da convergência em
 J500 e não era respeitado pelo `hvns-shaking`, que só checava o prazo entre
 vizinhanças). **Os resultados em `results/` gerados antes dessa mudança não
 são comparáveis para estas três entradas.**
+
+### `hyprr-vnd`
+
+Busca local completa do HyPRR (Teixeira, Subramanian & Kramer, `hyprr/articles/HyPRR.pdf`,
+Sec. 4.2), portada do código original dos autores como entrou em `hyprr/` (commit `0cec09d`,
+igual a `hyprr/versions/HyPRR2`) — **não** de `hyprr/versions/HyPRR`, uma variante posterior que
+embaralha a ordem de varredura e põe a troca como 2ª vizinhança. No HyPRR ela é aplicada a cada
+indivíduo novo depois do ruin-and-recreate; aqui ocupa o slot do IG_IJ. Cada chamada roda o VND até
+convergir; ignora `reference`.
+
+- Vizinhanças, na ordem: inserção, inserção em bloco com x = 2, 3, 4 e troca (`nViz` = 5, ou 4
+  quando n = 500, como no original). Cada uma é uma varredura de primeira melhoria: aplica o
+  movimento na hora e segue varrendo a partir da solução nova.
+- Aceitação: makespan menor, ou igual com menor `T` (soma dos tempos ociosos + bloqueados).
+- Aceleração: Taillard generalizado para bloco e troca; poda por block-skip (inserção e troca)
+  e pela LB de Ding et al. (2016) na inserção. A LB de troca do artigo fica **desligada**, como no
+  código original (lá a chamada está comentada). Ver `speed-ups/README.md` (#5 e #6).
+- O port foi verificado contra o binário original: mesma sequência e mesmo makespan em 150
+  varreduras isoladas e 25 VNDs completos.
+
+Essa entrada foi adicionada depois do sweep versionado em `results/`, então **ainda não tem
+`results/hyprr-vnd.csv`**. Para gerar: `python3 run_all.py --all -p hyprr-vnd` (sem `-p`, o
+`run_all.py` reroda todas as entradas).
 
 ### `tpa-sa` (fora do registry)
 
@@ -253,6 +277,7 @@ Opções do `run_all.py`: `--all` (sem ele, só as instâncias `*N1`),
 `--iters` (padrão 10), `--seed`, `--no-build`, `--results-dir`,
 `--trajectories-dir`, `--time-limit-ms` (repassado, mas ignorado pelo
 binário), `--slot-time-limit-ms`, `--trajectory-max-rows`, `--no-trajectory`,
+`-p/--local-search <entrada>` (só essa entrada; só os arquivos dela são reescritos),
 `-j/--threads` (padrão 1; execuções do binário em paralelo — pode afetar as
 medições de tempo).
 Opções do `output_to_excel.py`: `[results_dir]`, `--output` (default
@@ -274,7 +299,7 @@ include/ src/                 infra copiada de local-searchs-fair/ (Core, Instan
     NEH.*                     reconstrução (NEH::second_step) - dependência do host loop
     PF.*, PF_NEH.*            construção inicial - copiados verbatim de IG_IJ/ (não existiam nas outras pastas)
   local-search/                bodies de local-searchs-fair/, menos os removidos (rls-grabowski, BestSwap
-                               bugado e os VNDs que o usavam)
+                               bugado e os VNDs que o usavam); HyprrLS.* copiado de speed-ups/ (hyprr-vnd)
   localsearchs/
     IgHost.*                  host loop (destroy/reconstrói/chama a busca local/aceita) + registry das 19
                                entradas como adaptadores "step" + laço de repetição + serialização CSV (summary

@@ -10,4 +10,5 @@ ls_src = files(
   'SvnsD.cpp',
   'Hvns.cpp',
   'Tpa.cpp',
+  'HyprrLS.cpp',
 )

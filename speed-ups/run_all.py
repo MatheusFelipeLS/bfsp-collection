@@ -72,10 +72,20 @@ def discover_instances(pick_all):
     return [path for _, path in found]
 
 
-def run_one(instance_path, iters, seed):
+def run_one(instance_path, iters, seed, speedups=None):
     """Retorna {speedup: [instance, naive_ms, accel_ms, factor, pruned_machines_pct,
-    discarded_positions_pct, note]}."""
+    discarded_positions_pct, note]}. `speedups`: nomes aceitos por -p do binário
+    (grupo ou linha); None = todos."""
+    rows = {}
+    for which in (speedups or [None]):
+        rows.update(run_binary(instance_path, iters, seed, which))
+    return rows
+
+
+def run_binary(instance_path, iters, seed, which):
     cmd = ["./" + BINARY, instance_path, "-n", str(iters), "-s", str(seed)]
+    if which:
+        cmd += ["-p", which]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         log(f"  AVISO: {instance_path} -> rc={proc.returncode} stderr={proc.stderr.strip()!r}")
@@ -104,6 +114,9 @@ def main():
     parser.add_argument("--iters", type=int, default=10, help="repetições por speed up (default: 5)")
     parser.add_argument("--seed", type=int, default=42, help="seed do RNG (default: 42)")
     parser.add_argument("--results-dir", default="results", help="diretório de saída (default: results/)")
+    parser.add_argument("-p", "--speedup", action="append",
+                        help="só este speed up (grupo ou linha, como no -p do binário); pode repetir. "
+                             "Só os results/<speedup>.csv dessas linhas são reescritos")
     parser.add_argument("-j", "--threads", type=int, default=1,
                         help="nº de execuções do binário em paralelo (default: 1). Atenção: rodar em "
                              "paralelo pode afetar as medições de tempo")
@@ -124,7 +137,7 @@ def main():
     # speedup -> [linha, ...], preservando a ordem menor->maior das instâncias.
     per_speedup = {}
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
-        futures = [executor.submit(run_one, p, args.iters, args.seed) for p in instances]
+        futures = [executor.submit(run_one, p, args.iters, args.seed, args.speedup) for p in instances]
         for i, (instance_path, future) in enumerate(zip(instances, futures), start=1):
             for speedup, row in future.result().items():
                 per_speedup.setdefault(speedup, []).append(row)

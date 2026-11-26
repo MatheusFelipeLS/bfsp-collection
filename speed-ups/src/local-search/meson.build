@@ -3,4 +3,5 @@ ls_src = files(
   'Grabowski.cpp',
   'Swap.cpp',
   'EdgeInsertion.cpp',
+  'HyprrLS.cpp',
 )

@@ -147,6 +147,9 @@ def main():
                         help="não grava trajectories/ (sweep mais rápido e leve)")
     parser.add_argument("--trajectory-max-rows", type=int, default=None,
                         help="repassado ao binário --trajectory-max-rows (default do binário: 2000)")
+    parser.add_argument("-p", "--local-search", default=None,
+                        help="só esta entrada (repassado ao -p do binário); só os arquivos dela em "
+                             "results/ e trajectories/ são reescritos")
     parser.add_argument("-j", "--threads", type=int, default=1,
                         help="nº de execuções do binário em paralelo (default: 1). Atenção: rodar em "
                              "paralelo pode afetar as medições de tempo")
@@ -162,6 +165,8 @@ def main():
         sys.exit(f"binário não encontrado: {BINARY} (rode sem --no-build)")
 
     extra_args = []
+    if args.local_search:
+        extra_args += ["-p", args.local_search]
     if args.no_trajectory:
         extra_args.append("--no-trajectory")
     if args.slot_time_limit_ms is not None:

@@ -19,6 +19,7 @@
 
 #include "constructions/NEH.h"
 #include "local-search/EdgeInsertion.h"
+#include "local-search/HyprrLS.h"
 #include "local-search/RLS.h"
 #include "local-search/Swap.h"
 #include "speedups/Naive.h"
@@ -385,6 +386,119 @@ bench::Result bench_partial_recalc(Instance &instance, const Parameters &params,
     return r;
 }
 
+// ---------------------------------------------------------------------------
+// HyPRR's local search (local-search/HyprrLS.*): ONE first-improvement sweep of
+// one neighbourhood, from input.start. Every group times a single naive sweep
+// (HyprrLS::naive(): candidate rebuilt + full O(n*m) recompute, no pruning) and
+// compares each accelerated variant against it:
+//   *-taillard     generalised Taillard (head/tail of the reduced sequence,
+//                  early cut-off), no pruning -> same decisions as naive,
+//                  checked for identical sequence and makespan
+//   *-block-skip   + skip moves inside one critical-path block (Grabowski)
+//   *-lb           + O(1) lower bound (insertion: Ding et al. 2016; swap: HyPRR's
+//                  own, eqs. 8-10) -> pruning may drop tie moves (and, if the
+//                  bound is not valid, improving ones), so the trajectory can
+//                  differ: checked for validity only.
+// For pruning rows, discarded_positions_pct = % of candidate moves pruned, and
+// the note reports pruned_improving = pruned moves that would have strictly
+// lowered the makespan (an audit run evaluates every pruned move exactly; 0
+// means the pruning never cut an improving move on this input).
+// ---------------------------------------------------------------------------
+namespace hyprr_bench {
+
+using Sweep = std::function<void(HyprrLS &, Solution &)>;
+
+std::vector<bench::Result> group(Instance &instance, const Parameters &params, const Input &input,
+                                 const Sweep &sweep,
+                                 const std::vector<std::pair<std::string, HyprrLS::Options>> &rows) {
+    Solution start;
+    start.sequence = input.start;
+    core::recalculate_solution(instance, start);
+
+    Solution naive_sol;
+    const double naive_ms = time_ms(
+        [&] {
+            HyprrLS ls(instance, HyprrLS::naive());
+            naive_sol = start;
+            sweep(ls, naive_sol);
+        },
+        params.iters());
+    const bool naive_valid = naive_sol.cost == recompute_cost(naive_sol.sequence, instance);
+
+    std::vector<bench::Result> out;
+    for (const auto &[name, opt] : rows) {
+        bench::Result r = blank(name.c_str(), instance, params);
+        Solution sol;
+        r.accel_ms = time_ms(
+            [&] {
+                HyprrLS ls(instance, opt);
+                sol = start;
+                sweep(ls, sol);
+            },
+            params.iters());
+        r.naive_ms = naive_ms;
+        r.factor = r.accel_ms > 0 ? r.naive_ms / r.accel_ms : 0.0;
+
+        const bool prunes = opt.block_skip || opt.insertion_lb || opt.swap_lb;
+        const bool valid = sol.cost == recompute_cost(sol.sequence, instance) && sol.cost <= start.cost;
+        r.note = "start=" + std::to_string(start.cost) + " naive=" + std::to_string(naive_sol.cost) +
+                 " accel=" + std::to_string(sol.cost);
+
+        if (!prunes) {
+            r.correct = naive_valid && valid && sol.sequence == naive_sol.sequence && sol.cost == naive_sol.cost;
+        } else {
+            r.correct = naive_valid && valid;
+            HyprrLS audit(instance, opt);
+            audit.work().audit = true;
+            Solution tmp = start;
+            sweep(audit, tmp);
+            const HyprrLS::Work &w = audit.work();
+            r.discarded_positions_pct = pct(w.candidates - w.evaluated, w.candidates);
+            r.note += " same_trajectory=" + std::string(sol.sequence == naive_sol.sequence ? "1" : "0") +
+                      " pruned_improving=" + std::to_string(w.pruned_improving);
+        }
+        out.push_back(r);
+    }
+    return out;
+}
+
+HyprrLS::Options with(bool block_skip, bool insertion_lb, bool swap_lb) {
+    return HyprrLS::Options{true, block_skip, insertion_lb, swap_lb};
+}
+
+// Disabled (not new): insertion-taillard == #1; insertion-lb uses the same
+// O(1) critical-path LB as hyprr-swap-lb (Ding et al. 2016), which is the one
+// kept since it gave the better results.
+[[maybe_unused]] std::vector<bench::Result> insertion(Instance &instance, const Parameters &params,
+                                                      const Input &input) {
+    return group(instance, params, input, [](HyprrLS &ls, Solution &s) { ls.insertion(s); },
+                 {{"hyprr-insertion-taillard", HyprrLS::taillard_only()},
+                  {"hyprr-insertion-lb", with(true, true, false)}}); // == HyPRR's relocate
+}
+
+// Disabled (not new): Taillard for a block of x jobs == edge-insertion generalised.
+[[maybe_unused]] std::vector<bench::Result> block_insertion(Instance &instance, const Parameters &params, const Input &input) {
+    // x = 2, 3, 4 in sequence, one sweep each (neighbourhoods 2-4 of the VND).
+    return group(instance, params, input,
+                 [](HyprrLS &ls, Solution &s) {
+                     for (size_t x = 2; x <= 4; x++) {
+                         ls.block_insertion(s, x);
+                     }
+                 },
+                 {{"hyprr-block-insertion-taillard", HyprrLS::taillard_only()}}); // == HyPRR's twoOpt
+}
+
+std::vector<bench::Result> swap(Instance &instance, const Parameters &params, const Input &input) {
+    return group(instance, params, input, [](HyprrLS &ls, Solution &s) { ls.swap(s); },
+                 {// Disabled (not new): swap-taillard == #3 partial recalc + #1 tail;
+                  // swap-block-skip == Grabowski block property (#2) on swap.
+                  // {"hyprr-swap-taillard", HyprrLS::taillard_only()},
+                  // {"hyprr-swap-block-skip", with(true, false, false)}, // == HyPRR's swap
+                  {"hyprr-swap-lb", with(true, false, true)}});
+}
+
+} // namespace hyprr_bench
+
 using BenchFn = std::function<std::vector<bench::Result>(Instance &, const Parameters &, const Input &)>;
 
 struct Entry {
@@ -411,6 +525,11 @@ const std::vector<Entry> &registry() {
         {"taillard-insertion", {"taillard-insertion"}, single(bench_taillard_insertion)},
         {"rls", {"rls-taillard", "rls-taillard-cutoff", "rls-grabowski", "rls-grabowski-blocks"}, bench_rls},
         {"partial-recalc", {"partial-recalc"}, single(bench_partial_recalc)},
+        {"hyprr-swap", {"hyprr-swap-lb"}, hyprr_bench::swap},
+        // HyPRR rows that only reapply speed ups already in the catalogue:
+        // {"hyprr-insertion", {"hyprr-insertion-taillard", "hyprr-insertion-lb"}, hyprr_bench::insertion},
+        // {"hyprr-block-insertion", {"hyprr-block-insertion-taillard"}, hyprr_bench::block_insertion},
+        // {"hyprr-swap", {"hyprr-swap-taillard", "hyprr-swap-block-skip"}, hyprr_bench::swap},
         // superseded by the "rls" group (rls_grabowski is now compared against naive::rls):
         // {"grabowski-block", {"grabowski-block"}, single(bench_grabowski_block)},
         // {"edge-insertion", {"edge-insertion"}, single(bench_edge_insertion)},

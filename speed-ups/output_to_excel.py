@@ -37,6 +37,12 @@ SPEEDUP_ORDER = [
     "rls-grabowski",
     "rls-grabowski-blocks",
     "partial-recalc",
+    "hyprr-insertion-taillard",
+    "hyprr-insertion-lb",
+    "hyprr-block-insertion-taillard",
+    "hyprr-swap-taillard",
+    "hyprr-swap-block-skip",
+    "hyprr-swap-lb",
     "grabowski-block",
     "edge-insertion",
     "alpha-sigma",
@@ -49,6 +55,13 @@ DISCARDED_HEADER = "Posições descartadas (%)"
 GRABOWSKI_COSTS_HEADER = ["Custo inicial", "Custo ingênuo", "Custo grabowski", "Mesma trajetória"]
 
 GRABOWSKI_NOTE_RE = re.compile(r"start=(\d+)\s+naive=(\d+)\s+grabowski=(\d+)\s+same_trajectory=(\d)")
+# Linhas hyprr-* com poda (block-skip / lower bounds): note traz o custo final,
+# se a trajetória coincidiu com a do naive e quantos movimentos podados teriam
+# melhorado o makespan (auditoria; 0 = a poda nunca cortou um movimento bom).
+HYPRR_PRUNE_HEADER = ["Custo inicial", "Custo ingênuo", "Custo acelerado", "Mesma trajetória",
+                      "Movimentos melhores podados"]
+HYPRR_PRUNE_NOTE_RE = re.compile(
+    r"start=(\d+)\s+naive=(\d+)\s+accel=(\d+)\s+same_trajectory=(\d)\s+pruned_improving=(\d+)")
 
 
 def optional_float(text):
@@ -114,12 +127,15 @@ def header_for(speedup, rows):
         header.append(DISCARDED_HEADER)
     if speedup in ("rls-grabowski", "rls-grabowski-blocks"):
         header += GRABOWSKI_COSTS_HEADER
+    if any(HYPRR_PRUNE_NOTE_RE.search(r["note"]) for r in rows):
+        header += HYPRR_PRUNE_HEADER
     return header
 
 
 def sheet_rows_for(speedup, rows):
     """Converte os registros brutos nas linhas da aba daquele speed up."""
     with_pruned, with_discarded = has(rows, "pruned"), has(rows, "discarded")
+    with_hyprr = any(HYPRR_PRUNE_NOTE_RE.search(r["note"]) for r in rows)
     out = []
     for r in rows:
         line = [r["instance"], r["naive_ms"], r["accel_ms"], r["factor"]]
@@ -130,6 +146,9 @@ def sheet_rows_for(speedup, rows):
         if speedup in ("rls-grabowski", "rls-grabowski-blocks"):
             m = GRABOWSKI_NOTE_RE.search(r["note"])
             line += [int(x) for x in m.groups()] if m else [None] * 4
+        if with_hyprr:
+            m = HYPRR_PRUNE_NOTE_RE.search(r["note"])
+            line += [int(x) for x in m.groups()] if m else [None] * 5
         out.append(line)
     return out
 

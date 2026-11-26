@@ -16,6 +16,7 @@
 #include "local-search/BestSwapIg.h"
 #include "local-search/EdgeInsertion.h"
 #include "local-search/Hvns.h"
+#include "local-search/HyprrLS.h"
 #include "local-search/MrlsPEda.h"
 #include "local-search/RLS.h"
 #include "local-search/RlsDeAbc.h"
@@ -414,6 +415,21 @@ std::vector<ig::RunResult> bench_tpa_sa(Instance &instance, const Parameters &pa
                      trajectories);
 }
 
+// ---------------------------------------------------------------------------
+// #20 - hyprr-vnd: HyPRR's whole local search (LocalSearch::runSearchTotal,
+// hyprr/ commit 0cec09d), see include/local-search/HyprrLS.h. VND over
+// insertion -> block insertion x=2,3,4 -> swap (no swap when n == 500),
+// first improvement, makespan + idle/blocking tie-break, generalised Taillard
+// evaluation, block-skip + Ding insertion LB (swap LB off, as in the original).
+// Runs to convergence on every call; ignores the reference.
+// ---------------------------------------------------------------------------
+std::vector<ig::RunResult> bench_hyprr_vnd(Instance &instance, const Parameters &params, size_t seed,
+                                           std::vector<ig::TrajectoryBlock> &trajectories) {
+    HyprrLS ls(instance, HyprrLS::hyprr_original());
+    StepFn step = [&](Solution &s, Instance &, std::vector<size_t> &) { ls.vnd(s); };
+    return run_entry("hyprr-vnd", instance, params, seed, noop_setup, step, "", trajectories);
+}
+
 using BenchFn = std::function<std::vector<ig::RunResult>(Instance &, const Parameters &, size_t,
                                                          std::vector<ig::TrajectoryBlock> &)>;
 
@@ -437,6 +453,7 @@ const std::vector<std::pair<std::string, BenchFn>> &registry() {
         {"hvns-shaking", bench_hvns_shaking},
         {"hvns-sa-rls", bench_hvns_sa_rls},
         {"hvns-sa-edge-insertion", bench_hvns_sa_edge_insertion},
+        {"hyprr-vnd", bench_hyprr_vnd},
         // {"tpa-sa", bench_tpa_sa},
     };
     return reg;
