@@ -494,7 +494,10 @@ std::vector<bench::Result> swap(Instance &instance, const Parameters &params, co
                   // swap-block-skip == Grabowski block property (#2) on swap.
                   // {"hyprr-swap-taillard", HyprrLS::taillard_only()},
                   // {"hyprr-swap-block-skip", with(true, false, false)}, // == HyPRR's swap
-                  {"hyprr-swap-lb", with(true, false, true)}});
+                  {"hyprr-swap-lb", with(true, false, true)},
+                  // LB alone: naive full recompute per candidate, no Taillard and no
+                  // block-skip -> isolates what the swap LB (#6c) prunes by itself.
+                  {"hyprr-swap-lb-only", HyprrLS::Options{false, false, false, true}}});
 }
 
 } // namespace hyprr_bench
@@ -525,7 +528,7 @@ const std::vector<Entry> &registry() {
         {"taillard-insertion", {"taillard-insertion"}, single(bench_taillard_insertion)},
         {"rls", {"rls-taillard", "rls-taillard-cutoff", "rls-grabowski", "rls-grabowski-blocks"}, bench_rls},
         {"partial-recalc", {"partial-recalc"}, single(bench_partial_recalc)},
-        {"hyprr-swap", {"hyprr-swap-lb"}, hyprr_bench::swap},
+        {"hyprr-swap", {"hyprr-swap-lb", "hyprr-swap-lb-only"}, hyprr_bench::swap},
         // HyPRR rows that only reapply speed ups already in the catalogue:
         // {"hyprr-insertion", {"hyprr-insertion-taillard", "hyprr-insertion-lb"}, hyprr_bench::insertion},
         // {"hyprr-block-insertion", {"hyprr-block-insertion-taillard"}, hyprr_bench::block_insertion},

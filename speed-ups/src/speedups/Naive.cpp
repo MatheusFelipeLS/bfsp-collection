@@ -123,10 +123,12 @@ bool naive::swap_neighborhood_best(Solution &s, Instance &instance) {
     size_t best_j = 0;
     size_t best_obj = s.cost;
 
+    // One probe reused for every pair: the matrix is allocated once, so the
+    // baseline times the full O(n*m) recompute and not n*m-sized allocations.
+    Solution probe;
     for (size_t i = 0; i < seq.size(); i++) {
         for (size_t j = i + 1; j < seq.size(); j++) {
             std::swap(seq[i], seq[j]);
-            Solution probe;
             probe.sequence = seq;
             core::recalculate_solution(instance, probe);
             std::swap(seq[i], seq[j]);

@@ -16,6 +16,7 @@ ROWS = [  # (arquivo em results/, rótulo na tabela)
     ("rls-taillard-cutoff", "RLS-Taillard-Cutoff"),
     ("rls-grabowski-blocks", "RLS-Grabowski"),
     ("rls-grabowski", "RLS-Taillard-Grabowski"),
+    ("hyprr-swap-lb", "Swap-Ding"),  # % de movimentos de troca podados pelo LB
 ]
 EXCLUDED = {(200, 5), (500, 5), (500, 10)}  # classes (n, m) ignoradas
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N\d+$")

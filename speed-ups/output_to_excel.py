@@ -43,6 +43,7 @@ SPEEDUP_ORDER = [
     "hyprr-swap-taillard",
     "hyprr-swap-block-skip",
     "hyprr-swap-lb",
+    "hyprr-swap-lb-only",
     "grabowski-block",
     "edge-insertion",
     "alpha-sigma",

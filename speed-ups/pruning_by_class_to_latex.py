@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Gera a tabela LaTeX de trabalho poupado por classe (n x m), no formato de
 table_example.txt: máquinas podadas (NEH-Taillard-Cutoff, RLS-Taillard-Cutoff,
-RLS + Restrição de blocos) e posições descartadas (RLS + Restrição de blocos).
+RLS-Grabowski, RLS-Taillard-Grabowski) e posições descartadas
+(RLS-Grabowski / RLS-Taillard-Grabowski e Swap-Ding).
 Cada célula é a média das instâncias da classe em results/*.csv; as classes em
 EXCLUDED são ignoradas.
 
@@ -21,6 +22,7 @@ COLUMNS = [
     ("rls-grabowski-blocks", "pruned_machines_pct"),
     ("rls-grabowski", "pruned_machines_pct"),
     ("rls-grabowski", "discarded_positions_pct"),
+    ("hyprr-swap-lb", "discarded_positions_pct"),
 ]
 EXCLUDED = {(200, 5), (500, 5), (500, 10)}  # classes (n, m) ignoradas
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N\d+$")
@@ -60,12 +62,13 @@ def main():
         r"\caption{Percentual médio de trabalho poupado por classe de dimensão ($n \times m$).}",
         r"\label{tab:escalabilidade_podas}",
         r"\resizebox{\textwidth}{!}{",
-        r"\begin{tabular}{lccccc}",
+        r"\begin{tabular}{l" + "c" * len(COLUMNS) + "}",
         r"\hline",
-        r"\textbf{Classe ($n \times m$)} & \multicolumn{2}{c}{\textbf{Máquinas Podadas (\%)}} & "
-        r"\multicolumn{2}{c}{\textbf{\texttt{RLS + Restrição de blocos}}} \\ \cline{2-5}",
-        r" & \texttt{NEH-Taillard-Cutoff} & \texttt{RLS-Taillard-Cutoff} & "
-        r"\textbf{Máquinas Podadas (\%)} & \textbf{Posições Descartadas (\%)} \\ \hline",
+        r"\textbf{Classe ($n \times m$)} & \multicolumn{4}{c}{\textbf{Máquinas Podadas (\%)}} & "
+        r"\multicolumn{2}{c}{\textbf{Posições Descartadas (\%)}} \\ \cline{2-7}",
+        r" & \texttt{NEH-Taillard-Cutoff} & \texttt{RLS-Taillard-Cutoff} & \texttt{RLS-Grabowski} & "
+        r"\texttt{RLS-Taillard-Grabowski} & \texttt{RLS-Grabowski} / \texttt{RLS-Taillard-Grabowski} & "
+        r"\texttt{Swap-Ding} \\ \hline",
     ]
     for n, m in classes:
         cells = []

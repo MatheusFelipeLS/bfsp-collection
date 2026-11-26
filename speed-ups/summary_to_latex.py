@@ -18,6 +18,7 @@ ROWS = [  # (arquivo em results/, rótulo na tabela)
     ("rls-grabowski-blocks", "RLS-Grabowski"),
     ("rls-grabowski", "RLS-Taillard-Grabowski"),
     ("partial-recalc", "Swap-Partial"),
+    ("hyprr-swap-lb", "Swap-Ding"),  # LB O(1) de troca (Ding et al., blocos do caminho crítico)
 ]
 EXCLUDED = {(200, 5), (500, 5), (500, 10)}  # classes (n, m) ignoradas
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N\d+$")
