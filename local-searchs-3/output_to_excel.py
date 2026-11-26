@@ -22,7 +22,7 @@ Colunas específicas deste harness (não existem em local-searchs/local-searchs-
 Este script agrupa as linhas brutas por instância e calcula, por entrada, uma
 aba com uma linha por instância:
 
-    Instância | Custo inicial | Custo final (méd) | RPD (%) | Fonte RPD
+    Instância | Custo inicial | Custo final (méd) | RPD (%)
              | N chamadas (méd) | Chamada do melhor (méd) | % do sweep até o melhor
              | Melhoria méd/chamada | Tempo médio (ms) | Orçamento (ms) | N iterações | Nota
 
@@ -76,12 +76,21 @@ ENTRY_ORDER = [
 ]
 
 SHEET_HEADER = [
-    "Instância", "Custo inicial", "Custo final (méd)", "RPD (%)", "Fonte RPD", "N chamadas (méd)",
+    "Instância", "Custo inicial", "Custo final (méd)", "RPD (%)", "N chamadas (méd)",
     "Chamada do melhor (méd)", "% até o melhor", "Melhoria méd/chamada", "Tempo médio (ms)", "Orçamento (ms)",
     "N iterações", "Nota",
 ]
 
 INSTANCE_RE = re.compile(r"^(J\d+M\d+)N(\d+)$")
+
+# Grupos (JxxxMyy) ignorados na agregação: suas instâncias não entram em
+# nenhuma aba, nem no RPD, nem no Resumo.
+IGNORED_GROUPS = {"J200M5", "J500M5", "J500M10"}
+
+
+def is_ignored_instance(instance_name):
+    m = INSTANCE_RE.match(instance_name)
+    return bool(m) and m.group(1) in IGNORED_GROUPS
 
 
 def load_literature_best(path):
@@ -107,6 +116,8 @@ def parse_results_file(path):
     with open(path, newline="") as f:
         reader = csv.DictReader(f)
         for rec in reader:
+            if is_ignored_instance(rec["instance"]):
+                continue
             rows.append({
                 "instance": rec["instance"],
                 "iteration": int(rec["iteration"]),
@@ -167,11 +178,10 @@ def attach_rpd(aggregated_by_entry, literature):
         for r in agg_rows:
             lit_best = literature_best_cost(r["instance"], literature)
             if lit_best:
-                reference, source = lit_best, "literatura (Ribas)"
+                reference = lit_best
             else:
-                reference, source = best_found[r["instance"]], "melhor desta rodada"
+                reference = best_found[r["instance"]]
             r["rpd"] = ((r["final_best_cost_mean"] - reference) / reference * 100) if reference > 0 else 0.0
-            r["rpd_source"] = source
 
 
 def discover_results(results_dir):
@@ -197,7 +207,7 @@ def autosize_columns(sheet):
 
 def sheet_rows_for(aggregated_rows):
     return [
-        [r["instance"], r["initial_cost"], r["final_best_cost_mean"], r["rpd"], r["rpd_source"], r["n_calls_mean"],
+        [r["instance"], r["initial_cost"], r["final_best_cost_mean"], r["rpd"], r["n_calls_mean"],
          r["call_of_best_mean"], r["pct_calls_to_best"], r["avg_improvement_per_call_mean"], r["time_ms_mean"],
          r["time_limit_ms"], r["n_iterations"], r["note"]]
         for r in aggregated_rows
@@ -221,7 +231,7 @@ def write_workbook(results, literature, out_path):
         improvements = [r["avg_improvement_per_call_mean"] for r in agg_rows]
         summary.append((
             entry, sum(rpds) / len(rpds), min(rpds), max(rpds), sum(n_calls) / len(n_calls),
-            sum(pct_to_best) / len(pct_to_best), sum(improvements) / len(improvements), len(agg_rows),
+            sum(pct_to_best) / len(pct_to_best), sum(improvements) / len(improvements),
         ))
     # Menor RPD médio primeiro: a aba "Resumo" já funciona como ranking.
     summary.sort(key=lambda row: row[1])
@@ -229,7 +239,7 @@ def write_workbook(results, literature, out_path):
     summary_sheet = wb.create_sheet(title="Resumo")
     summary_sheet.append([
         "Entrada", "RPD médio (%)", "RPD mín (%)", "RPD máx (%)", "N chamadas (méd)", "% até o melhor (méd)",
-        "Melhoria méd/chamada", "N instâncias",
+        "Melhoria méd/chamada",
     ])
     for row in summary:
         summary_sheet.append(list(row))
@@ -267,10 +277,10 @@ def main():
 
     total_raw_rows = sum(len(rows) for rows in results.values())
     print(f"{'#':>3} {'Entrada':<26} {'RPD médio':>12} {'mín':>10} {'máx':>10} {'N chamadas':>12} "
-          f"{'% até melhor':>13} {'Melhoria/chamada':>18} {'N inst':>8}")
-    for rank, (entry, avg, pmin, pmax, avg_calls, avg_pct, avg_improve, count) in enumerate(summary, start=1):
+          f"{'% até melhor':>13} {'Melhoria/chamada':>18}")
+    for rank, (entry, avg, pmin, pmax, avg_calls, avg_pct, avg_improve) in enumerate(summary, start=1):
         print(f"{rank:>3} {entry:<26} {avg:>11.3f}% {pmin:>9.3f}% {pmax:>9.3f}% {avg_calls:>12.1f} "
-              f"{avg_pct:>12.1f}% {avg_improve:>18.3f} {count:>8}")
+              f"{avg_pct:>12.1f}% {avg_improve:>18.3f}")
 
     print(f"\naggregated {total_raw_rows} raw repetition rows across {len(results)} sheets to {args.output}")
 
