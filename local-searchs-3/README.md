@@ -1,8 +1,8 @@
 # local-searchs-3
 
 Terceira forma de avaliar as buscas locais do catálogo de
-`local-searchs/`/`local-searchs-fair/` (aqui reduzido a **19 entradas**, mais a
-entrada `hyprr-vnd` acrescentada depois — ver "As entradas") — em vez de rodar cada uma isolada
+`local-searchs/`/`local-searchs-fair/` (aqui reduzido a **15 entradas ativas**,
+incluindo a `hyprr-vnd` acrescentada depois — ver "As entradas") — em vez de rodar cada uma isolada
 (com ou sem orçamento de tempo igual), esta pasta planta cada uma, uma de
 cada vez, **dentro do loop de uma metaheurística real** (o IG_IJ) no lugar do
 passo de busca local que ele já usa, e mede como isso afeta a convergência do
@@ -19,9 +19,9 @@ Metropolis (temperatura constante, não resfriada) — repete até o tempo
 acabar. O passo de busca local (`IG_IJ.cpp:126-131`) hoje é fixo: com
 probabilidade `jp` roda `BestSwap` (o `best-swap-ig` do catálogo, bugado),
 senão roda `rls`. Esta pasta generaliza esse único ponto de troca para
-aceitar **qualquer uma das 19 entradas do catálogo** — tudo o mais (tamanho
+aceitar **qualquer uma das entradas do registry** — tudo o mais (tamanho
 de destruição, temperatura de aceitação, construção inicial via PF_NEH,
-orçamento de tempo) fica fixo e idêntico entre as 19 rodadas, então a única
+orçamento de tempo) fica fixo e idêntico entre as rodadas, então a única
 variável é qual busca local ocupa o slot.
 
 Para cada (entrada, instância, repetição), o host mede:
@@ -47,7 +47,7 @@ Para cada (entrada, instância, repetição), o host mede:
   de convergência de uma entrada específica. Ver `trajectories/`.
 
 > Entrada aqui = a lista de 23 buscas locais comportamentalmente distintas
-> do catálogo original, **podada para 19** (ver abaixo). Ver
+> do catálogo original, **podada para 14**, mais a `hyprr-vnd` (ver abaixo). Ver
 > `local-searchs-fair/README.md` para a tabela completa de
 > origem/deduplicação.
 
@@ -65,6 +65,18 @@ correspondente apagado:
   curtos** `best-swap-ig`, `vnd1`, `vnd2`. Ou seja: em `results/` e
   `trajectories/`, esses três nomes já são as versões **sem o bug**.
 
+Depois disso, mais cinco entradas saíram do registry, mas só **comentadas**
+em `registry()` — o código (`bench_*`) continua lá, e basta descomentar a
+linha para voltar a rodá-las:
+
+- `svns-s-insertion`, `svns-d-swap`, `svns-d-insertion`, `hvns-best-swap`
+  — retiradas do sweep; os CSVs delas em `results/` foram apagados (as
+  trajetórias antigas continuam em `trajectories/`). O `hvns-best-swap`
+  continua sendo usado **internamente** pelo `hvns-shaking` (k=3).
+- `tpa-sa` — ver "`tpa-sa`" abaixo.
+
+Na tabela, essas entradas estão marcadas como *fora do registry*.
+
 | # | Entrada | Origem (arquivo:linhas) | O que faz | Algoritmos de origem |
 |---|---------|--------------------------|-----------|------------------------|
 | 1 | `rls` | `speed-ups/src/local-search/RLS.cpp:64-94` | Busca local de inserção (Taillard), converge (`cnt` reseta a cada melhoria) | MA, DIWO, MFFO, SaDIWO, HDDE, speed-ups |
@@ -76,17 +88,17 @@ correspondente apagado:
 | 7 | `vnd2` | `IG_VND2/src/IG_VND2.cpp:129-143`, com #4 corrigido (`vnd2_fixed`) | VND: k=1 `best-swap-ig` → k=2 `rls` | IG_VND2 |
 | 8 | `ig-ij-dispatch` | `IG_IJ/src/IG_IJ.cpp:118-133` | **A entrada baseline**: `RNG(0,1) < jp → best-swap-ig, senão rls`. Ver "A entrada baseline" | IG_IJ |
 | 9 | `svns-s-swap` | `SVNS_S/src/SVNS_S.cpp:63-92` | Troca melhor-melhoria por posição, recálculo total, passe único | SVNS_S |
-| 10 | `svns-s-insertion` | `SVNS_S/src/SVNS_S.cpp:94-117` | Inserção, passe único | SVNS_S |
-| 11 | `svns-d-swap` | `SVNS_D/src/SVNS_D.cpp:61-94` | Mesma troca, recálculo parcial | SVNS_D |
-| 12 | `svns-d-insertion` | `SVNS_D/src/SVNS_D.cpp:96-120` | Inserção, recálculo parcial | SVNS_D |
+| 10 | `svns-s-insertion` | `SVNS_S/src/SVNS_S.cpp:94-117` | Inserção, passe único — *fora do registry* | SVNS_S |
+| 11 | `svns-d-swap` | `SVNS_D/src/SVNS_D.cpp:61-94` | Mesma troca, recálculo parcial — *fora do registry* | SVNS_D |
+| 12 | `svns-d-insertion` | `SVNS_D/src/SVNS_D.cpp:96-120` | Inserção, recálculo parcial — *fora do registry* | SVNS_D |
 | 13 | `hvns-best-insertion` | `HVNS/src/HVNS.cpp:268-303` | Inserção de 1 job, melhor-melhoria | HVNS |
 | 14 | `hvns-best-edge-insertion` | `HVNS/src/HVNS.cpp:305-341` | Inserção de bloco de 2 jobs, melhor-melhoria | HVNS |
-| 15 | `hvns-best-swap` | `HVNS/src/HVNS.cpp:343-377` | Troca melhor-melhoria, recálculo parcial | HVNS |
+| 15 | `hvns-best-swap` | `HVNS/src/HVNS.cpp:343-377` | Troca melhor-melhoria, recálculo parcial — *fora do registry* (só usada dentro de #16) | HVNS |
 | 16 | `hvns-shaking` | `HVNS/src/HVNS.cpp:379-397` | Ciclo de restart VNS k=1..3 sobre {#13,#14,#15}, converge sozinho — ver "Entradas HVNS" | HVNS |
 | 17 | `hvns-sa-rls` | `HVNS/src/HVNS.cpp:399-435` | RLS com aceitação Metropolis + resfriamento geométrico, para após n rejeições seguidas | HVNS |
 | 18 | `hvns-sa-edge-insertion` | `HVNS/src/HVNS.cpp:437-482` | Mesma aceitação SA, inserção de bloco | HVNS |
 | 20 | `hyprr-vnd` | `hyprr/` commit `0cec09d`, `HyPRR/LocalSearch.cpp` (`runSearchTotal`, `relocate`, `twoOpt`, `swap`) — port em `HyprrLS` (cópia de `speed-ups/src/local-search/HyprrLS.cpp`) | VND de primeira melhoria: inserção → inserção em bloco x=2, 3, 4 → troca (sem troca quando n = 500), volta à 1ª vizinhança a cada melhoria; desempate por tempo ocioso+bloqueado; Taillard generalizado + poda pelo caminho crítico (block-skip + LB de Ding na inserção). Ver "`hyprr-vnd`" | HyPRR |
-| 19 | `tpa-sa` | `TPA/src/SimulatedAnnealing.cpp:123-136` | Remoção+reinserção via NEH, aceitação SA — **fora do registry**, ver "`tpa-sa`" | TPA |
+| 19 | `tpa-sa` | `TPA/src/SimulatedAnnealing.cpp:123-136` | Remoção+reinserção via NEH, aceitação SA — *fora do registry*, ver "`tpa-sa`" | TPA |
 
 Deduplicação, bugs conhecidos (o no-op de `BestSwap`, o `getchar()` órfão do
 `IG_VND1` original, etc.) e a justificativa de exclusão da variante de RLS do
@@ -97,7 +109,7 @@ para não divergir por edição em só um lugar.
 
 Diferente de `local-searchs-fair/`, aqui o "hospedeiro" (IG_IJ) já tinha,
 antes desta pasta existir, uma escolha própria de busca local — exatamente o
-que virou a entrada `ig-ij-dispatch`. Todas as OUTRAS 18 entradas são a
+que virou a entrada `ig-ij-dispatch`. Todas as OUTRAS 14 entradas ativas são a
 pergunta real: "e se, no lugar da escolha original do IG_IJ, eu usasse esta
 outra busca local?".
 
@@ -132,7 +144,7 @@ mudança estrutural é o parâmetro extra `step` no lugar do bloco
 (`reference = current.sequence`, a sequência de jobs da construção PF_NEH,
 **fixa durante toda a rodada** — nunca reembaralhada), para as entradas #1-3,
 #6-8 (família RLS/VND/dispatch, que espera um vetor de **job ids**). As
-entradas #9-12 (família SVNS, que espera um vetor de **posições** — ver
+entradas #9-12 (família SVNS, das quais só a #9 está ativa; espera um vetor de **posições** — ver
 `SvnsS.h`/`SvnsD.h`) mantêm sua própria referência separada, também fixa
 durante a rodada: `svns-s-*` começa embaralhada (`random_perm`), `svns-d-*`
 começa em ordem (`iota`), replicando o setup que `local-searchs-fair/` já
@@ -182,9 +194,11 @@ convergir; ignora `reference`.
 - O port foi verificado contra o binário original: mesma sequência e mesmo makespan em 150
   varreduras isoladas e 25 VNDs completos.
 
-Essa entrada foi adicionada depois do sweep versionado em `results/`, então **ainda não tem
-`results/hyprr-vnd.csv`**. Para gerar: `python3 run_all.py --all -p hyprr-vnd` (sem `-p`, o
-`run_all.py` reroda todas as entradas).
+Essa entrada foi adicionada depois do sweep principal e rodada à parte (`python3 run_all.py
+--all -p hyprr-vnd`; sem `-p`, o `run_all.py` reroda todas as entradas). O
+`results/hyprr-vnd.csv` versionado cobre **120 instâncias** (1200 linhas): não tem J200M5,
+J500M5 nem J500M10 — exatamente os grupos que o `output_to_excel.py` ignora (ver "Saída do
+binário"), então a comparação com as outras entradas no xlsx é sobre o mesmo conjunto.
 
 ### `tpa-sa` (fora do registry)
 
@@ -209,8 +223,8 @@ Consequência: `--time-limit-ms` (no binário e no `run_all.py`) continua
 sendo aceito, mas **é ignorado**. Para voltar a um orçamento fixo, é preciso
 descomentar a linha em `IgHost.cpp`.
 
-Custo de um sweep completo (`--all`, 150 instâncias, 10 repetições, 19
-entradas): soma de `10·n·m` sobre as instâncias (≈ 3045 s) × 190 ≈ 6,7 dias de
+Custo de um sweep completo (`--all`, 150 instâncias, 10 repetições, 15
+entradas): soma de `10·n·m` sobre as instâncias (≈ 3045 s) × 150 ≈ 5,3 dias de
 CPU em série; daí a opção `-j` do `run_all.py`.
 
 ## Saída do binário
@@ -239,6 +253,11 @@ convenção de `local-searchs-fair/`: melhor conhecido da literatura via
 rodada) e monta `local_searchs_results.xlsx` com uma aba **Resumo** ranqueada por RPD
 médio + uma aba por entrada. `../xlsx_to_md.py` converte esse xlsx em
 `../outputs/local_searchs_results.md`.
+
+**Grupos ignorados na agregação**: o `output_to_excel.py` descarta as instâncias de
+**J200M5, J500M5 e J500M10** (`IGNORED_GROUPS`) — elas não entram em nenhuma aba, nem no RPD,
+nem no Resumo, mesmo que estejam nos CSVs. Restam 12 grupos × 10 = 120 instâncias por entrada.
+O xlsx também não tem mais as colunas "Fonte RPD" (abas por entrada) e "N instâncias" (Resumo).
 
 **Repetições (`--iters`)**: cada repetição roda o IG inteiro do zero
 (mesma seed, reconstrução PF_NEH do zero) — como a condição de parada é por
@@ -285,11 +304,19 @@ Opções do `output_to_excel.py`: `[results_dir]`, `--output` (default
 
 ## Resultados versionados
 
-`results/` e `trajectories/` contêm o sweep completo atual: `--all` (150
-instâncias, J20–J500 × M5/M10/M20, 10 por grupo), 10 repetições, seed 42,
-orçamento `10·n·m` ms — 19 arquivos em `results/` (1500 linhas cada) e
-19 × 150 arquivos em `trajectories/`. Agregado em
-`local_searchs_results.xlsx` e `../outputs/local_searchs_results.md`.
+`results/` contém um CSV por entrada ativa (15 arquivos), todos com 10
+repetições, seed 42, orçamento `10·n·m` ms:
+
+- 14 entradas do sweep `--all` — 150 instâncias (J20–J500 × M5/M10/M20, 10
+  por grupo), 1500 linhas cada;
+- `hyprr-vnd` — 120 instâncias (sem J200M5/J500M5/J500M10), 1200 linhas.
+
+`trajectories/` ainda guarda as trajetórias das 5 entradas que saíram do
+registry (`svns-s-insertion`, `svns-d-swap`, `svns-d-insertion`,
+`hvns-best-swap`, `tpa-sa`), além das 15 ativas (150 instâncias cada; 120 para
+`hyprr-vnd`). Agregado em `local_searchs_results.xlsx` e
+`../outputs/local_searchs_results.md` (120 instâncias por entrada, ver
+"Grupos ignorados na agregação").
 
 ## Mapa de arquivos
 
@@ -301,12 +328,13 @@ include/ src/                 infra copiada de local-searchs-fair/ (Core, Instan
   local-search/                bodies de local-searchs-fair/, menos os removidos (rls-grabowski, BestSwap
                                bugado e os VNDs que o usavam); HyprrLS.* copiado de speed-ups/ (hyprr-vnd)
   localsearchs/
-    IgHost.*                  host loop (destroy/reconstrói/chama a busca local/aceita) + registry das 19
-                               entradas como adaptadores "step" + laço de repetição + serialização CSV (summary
+    IgHost.*                  host loop (destroy/reconstrói/chama a busca local/aceita) + registry das 15
+                               entradas ativas como adaptadores "step" + laço de repetição + serialização CSV (summary
                                + trajectory)
 src/main.cpp                  driver CLI
 run_all.py                    varre instâncias -> results/<entrada>.csv + trajectories/<entrada>__<instância>.csv
-output_to_excel.py            results/*.csv -> local_searchs_results.xlsx (RPD + convergência + Resumo ranqueado)
+output_to_excel.py            results/*.csv -> local_searchs_results.xlsx (RPD + convergência + Resumo ranqueado;
+                               ignora J200M5/J500M5/J500M10)
 results/, trajectories/       saída do último sweep (ver "Resultados versionados")
 ```
 

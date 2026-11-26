@@ -22,7 +22,8 @@ COLUMNS = [
     ("rls-grabowski-blocks", "pruned_machines_pct"),
     ("rls-grabowski", "pruned_machines_pct"),
     ("rls-grabowski", "discarded_positions_pct"),
-    ("hyprr-swap-lb", "discarded_positions_pct"),
+    ("hyprr-insertion-ding", "discarded_positions_pct"),
+    ("hyprr-insertion-ding-plus", "discarded_positions_pct"),
 ]
 EXCLUDED = {(200, 5), (500, 5), (500, 10)}  # classes (n, m) ignoradas
 INSTANCE_RE = re.compile(r"^J(\d+)M(\d+)N\d+$")
@@ -65,10 +66,10 @@ def main():
         r"\begin{tabular}{l" + "c" * len(COLUMNS) + "}",
         r"\hline",
         r"\textbf{Classe ($n \times m$)} & \multicolumn{4}{c}{\textbf{Máquinas Podadas (\%)}} & "
-        r"\multicolumn{2}{c}{\textbf{Posições Descartadas (\%)}} \\ \cline{2-7}",
+        r"\multicolumn{3}{c}{\textbf{Posições Descartadas (\%)}} \\ \cline{2-8}",
         r" & \texttt{NEH-Taillard-Cutoff} & \texttt{RLS-Taillard-Cutoff} & \texttt{RLS-Grabowski} & "
         r"\texttt{RLS-Taillard-Grabowski} & \texttt{RLS-Grabowski} / \texttt{RLS-Taillard-Grabowski} & "
-        r"\texttt{Swap-Ding} \\ \hline",
+        r"\texttt{Insertion-Ding} & \texttt{Insertion-Taillard-Grabowski-Ding} \\ \hline",
     ]
     for n, m in classes:
         cells = []

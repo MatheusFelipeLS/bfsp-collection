@@ -39,6 +39,8 @@ SPEEDUP_ORDER = [
     "partial-recalc",
     "hyprr-insertion-taillard",
     "hyprr-insertion-lb",
+    "hyprr-insertion-ding",
+    "hyprr-insertion-ding-plus",
     "hyprr-block-insertion-taillard",
     "hyprr-swap-taillard",
     "hyprr-swap-block-skip",

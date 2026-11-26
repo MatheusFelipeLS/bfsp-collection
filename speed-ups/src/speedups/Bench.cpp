@@ -395,7 +395,7 @@ bench::Result bench_partial_recalc(Instance &instance, const Parameters &params,
 //                  early cut-off), no pruning -> same decisions as naive,
 //                  checked for identical sequence and makespan
 //   *-block-skip   + skip moves inside one critical-path block (Grabowski)
-//   *-lb           + O(1) lower bound (insertion: Ding et al. 2016; swap: HyPRR's
+//   *-ding / *-lb  + O(1) lower bound (insertion: Ding et al. 2016; swap: HyPRR's
 //                  own, eqs. 8-10) -> pruning may drop tie moves (and, if the
 //                  bound is not valid, improving ones), so the trajectory can
 //                  differ: checked for validity only.
@@ -466,14 +466,19 @@ HyprrLS::Options with(bool block_skip, bool insertion_lb, bool swap_lb) {
     return HyprrLS::Options{true, block_skip, insertion_lb, swap_lb};
 }
 
-// Disabled (not new): insertion-taillard == #1; insertion-lb uses the same
-// O(1) critical-path LB as hyprr-swap-lb (Ding et al. 2016), which is the one
-// kept since it gave the better results.
-[[maybe_unused]] std::vector<bench::Result> insertion(Instance &instance, const Parameters &params,
-                                                      const Input &input) {
+// Ding et al. (2016) O(1) insertion lower bound (Theorems 2-4, blocks of the
+// critical path), skipping the move when delta >= 0:
+//   hyprr-insertion-ding        Ding alone: naive full recompute per candidate,
+//                               no Taillard, no block-skip -> isolates what the
+//                               insertion LB prunes by itself
+//   hyprr-insertion-ding-plus   Ding + Taillard + Grabowski block-skip
+//                               (== HyPRR's relocate)
+// (insertion-taillard alone is not new: == #1.)
+std::vector<bench::Result> insertion(Instance &instance, const Parameters &params, const Input &input) {
     return group(instance, params, input, [](HyprrLS &ls, Solution &s) { ls.insertion(s); },
-                 {{"hyprr-insertion-taillard", HyprrLS::taillard_only()},
-                  {"hyprr-insertion-lb", with(true, true, false)}}); // == HyPRR's relocate
+                 {// {"hyprr-insertion-taillard", HyprrLS::taillard_only()},
+                  {"hyprr-insertion-ding", HyprrLS::Options{false, false, true, false}},
+                  {"hyprr-insertion-ding-plus", with(true, true, false)}});
 }
 
 // Disabled (not new): Taillard for a block of x jobs == edge-insertion generalised.
@@ -488,7 +493,9 @@ HyprrLS::Options with(bool block_skip, bool insertion_lb, bool swap_lb) {
                  {{"hyprr-block-insertion-taillard", HyprrLS::taillard_only()}}); // == HyPRR's twoOpt
 }
 
-std::vector<bench::Result> swap(Instance &instance, const Parameters &params, const Input &input) {
+// Disabled: the swap LB is HyPRR's own (eqs. 8-10, commented out in the
+// original); the Ding speed up is benchmarked on insertion instead.
+[[maybe_unused]] std::vector<bench::Result> swap(Instance &instance, const Parameters &params, const Input &input) {
     return group(instance, params, input, [](HyprrLS &ls, Solution &s) { ls.swap(s); },
                  {// Disabled (not new): swap-taillard == #3 partial recalc + #1 tail;
                   // swap-block-skip == Grabowski block property (#2) on swap.
@@ -528,9 +535,10 @@ const std::vector<Entry> &registry() {
         {"taillard-insertion", {"taillard-insertion"}, single(bench_taillard_insertion)},
         {"rls", {"rls-taillard", "rls-taillard-cutoff", "rls-grabowski", "rls-grabowski-blocks"}, bench_rls},
         {"partial-recalc", {"partial-recalc"}, single(bench_partial_recalc)},
-        {"hyprr-swap", {"hyprr-swap-lb", "hyprr-swap-lb-only"}, hyprr_bench::swap},
+        {"hyprr-insertion", {"hyprr-insertion-ding", "hyprr-insertion-ding-plus"}, hyprr_bench::insertion},
+        // swap LB (HyPRR's own, not Ding's), replaced by the insertion group above:
+        // {"hyprr-swap", {"hyprr-swap-lb", "hyprr-swap-lb-only"}, hyprr_bench::swap},
         // HyPRR rows that only reapply speed ups already in the catalogue:
-        // {"hyprr-insertion", {"hyprr-insertion-taillard", "hyprr-insertion-lb"}, hyprr_bench::insertion},
         // {"hyprr-block-insertion", {"hyprr-block-insertion-taillard"}, hyprr_bench::block_insertion},
         // {"hyprr-swap", {"hyprr-swap-taillard", "hyprr-swap-block-skip"}, hyprr_bench::swap},
         // superseded by the "rls" group (rls_grabowski is now compared against naive::rls):

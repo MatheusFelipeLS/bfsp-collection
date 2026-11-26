@@ -1,0 +1,29 @@
+\begin{table}[htbp]
+\centering
+\small
+\caption{Desempenho comparativo global das 15 buscas locais integradas ao algoritmo IG\_IJ no benchmark BFSP.}
+\label{tab:resumo_buscas_locais}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Busca Local} & \textbf{RPD Médio (\%)} & \textbf{RPD Mín (\%)} & \textbf{RPD Máx (\%)} & \textbf{$N_{\text{chamadas}}$ (méd)} & \textbf{\% até o Melhor} & \textbf{$\Delta C_{\text{méd}}$/chamada} \\
+\midrule
+\texttt{mrls-p-eda} & \textbf{-0,788} & -3,048 & 0,365 & 25.739,6 & 55,89 & 23,44 \\
+\texttt{rls} & -0,780 & -3,087 & 0,398 & 24.983,6 & 54,58 & 24,36 \\
+\texttt{ig-ij-dispatch} & -0,771 & -3,095 & 0,531 & 24.933,1 & 58,66 & 24,21 \\
+\texttt{hvns-sa-rls} & -0,756 & -3,032 & 0,292 & 11.970,9 & 46,65 & 25,56 \\
+\texttt{hyprr-vnd} & -0,734 & -3,021 & 0,191 & 3.859,7 & 57,79 & 32,64 \\
+\texttt{rls-de-abc} & -0,669 & -3,187 & 0,332 & 42.979,4 & 56,63 & 19,76 \\
+\texttt{vnd1} & -0,544 & -2,753 & 0,513 & 6.373,6 & 56,82 & 32,95 \\
+\texttt{vnd2} & -0,450 & -2,926 & 0,865 & 3.905,6 & 57,68 & 35,02 \\
+\texttt{hvns-shaking} & -0,367 & -2,761 & 0,746 & 3.994,5 & 54,95 & 28,27 \\
+\texttt{hvns-sa-edge-insertion} & -0,338 & -2,659 & 0,600 & 15.408,7 & 52,41 & 10,73 \\
+\texttt{hvns-best-edge-insertion} & -0,292 & -2,672 & 1,026 & 40.618,2 & 57,81 & 6,66 \\
+\texttt{swap-first-ig} & -0,217 & -2,298 & 0,863 & 9.113,0 & 58,63 & 19,24 \\
+\texttt{hvns-best-insertion} & -0,207 & -2,701 & 0,789 & 41.858,5 & 59,53 & -0,93 \\
+\texttt{svns-s-swap} & -0,038 & -2,267 & 1,122 & 16.094,7 & 61,24 & 14,35 \\
+\texttt{best-swap-ig} & +0,151 & -2,331 & 2,091 & 18.891,9 & 62,38 & 10,31 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
